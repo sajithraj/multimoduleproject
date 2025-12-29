@@ -25,6 +25,10 @@ provider "aws" {
       iam            = "http://localhost:4566"
       lambda         = "http://localhost:4566"
       logs           = "http://localhost:4566"
+      sqs            = "http://localhost:4566"
+      cloudwatch     = "http://localhost:4566"
+      events         = "http://localhost:4566"
+      apigateway     = "http://localhost:4566"
     }
   }
 
@@ -32,6 +36,10 @@ provider "aws" {
   skip_credentials_validation = var.use_localstack
   skip_metadata_api_check     = var.use_localstack
   skip_requesting_account_id  = var.use_localstack
+
+  # For LocalStack, use static credentials
+  access_key = var.use_localstack ? "test" : null
+  secret_key = var.use_localstack ? "test" : null
 }
 
 # Variables
@@ -219,82 +227,130 @@ resource "aws_cloudwatch_log_group" "lambda_log_group" {
   }
 }
 
-# ==============================================
-# API GATEWAY RESOURCES (COMMENTED - USE LAMBDA DIRECT)
-# ==============================================
-# Note: LocalStack API Gateway service has limitations
-# Testing Lambda directly via aws lambda invoke is more reliable
-# API Gateway resources can be uncommented for AWS production deployment
 
-# resource "aws_api_gateway_rest_api" "token_api" {
-#   name        = "token-auth-api-${var.environment}"
-#   description = "API Gateway for OAuth2 Token Authorization"
-#
-#   tags = {
-#     Environment = var.environment
-#     Application = "StableCoinLambda"
-#     ManagedBy   = "Terraform"
-#   }
-# }
-#
-# resource "aws_api_gateway_resource" "api_resource" {
-#   rest_api_id = aws_api_gateway_rest_api.token_api.id
-#   parent_id   = aws_api_gateway_rest_api.token_api.root_resource_id
-#   path_part   = "api"
-# }
-#
-# resource "aws_api_gateway_resource" "auth_resource" {
-#   rest_api_id = aws_api_gateway_rest_api.token_api.id
-#   parent_id   = aws_api_gateway_resource.api_resource.id
-#   path_part   = "auth"
-# }
-#
-# resource "aws_api_gateway_method" "post_method" {
-#   rest_api_id      = aws_api_gateway_rest_api.token_api.id
-#   resource_id      = aws_api_gateway_resource.auth_resource.id
-#   http_method      = "POST"
-#   authorization    = "NONE"
-#   api_key_required = false
-# }
-#
-# resource "aws_api_gateway_integration" "lambda_integration" {
-#   rest_api_id             = aws_api_gateway_rest_api.token_api.id
-#   resource_id             = aws_api_gateway_resource.auth_resource.id
-#   http_method             = aws_api_gateway_method.post_method.http_method
-#   type                    = "AWS_PROXY"
-#   integration_http_method = "POST"
-#   uri                     = aws_lambda_function.token_auth_lambda.invoke_arn
-# }
-#
-# resource "aws_lambda_permission" "api_gateway_invoke" {
-#   statement_id  = "AllowAPIGatewayInvoke"
-#   action        = "lambda:InvokeFunction"
-#   function_name = aws_lambda_function.token_auth_lambda.function_name
-#   principal     = "apigateway.amazonaws.com"
-#   source_arn    = "${aws_api_gateway_rest_api.token_api.execution_arn}/*/*"
-# }
-#
-# resource "aws_api_gateway_deployment" "api_deployment" {
-#   rest_api_id = aws_api_gateway_rest_api.token_api.id
-#
-#   depends_on = [
-#     aws_api_gateway_integration.lambda_integration,
-#     aws_lambda_permission.api_gateway_invoke
-#   ]
-# }
-#
-# resource "aws_api_gateway_stage" "api_stage" {
-#   deployment_id = aws_api_gateway_deployment.api_deployment.id
-#   rest_api_id   = aws_api_gateway_rest_api.token_api.id
-#   stage_name    = var.environment
-#
-#   tags = {
-#     Environment = var.environment
-#     Application = "StableCoinLambda"
-#     ManagedBy   = "Terraform"
-#   }
-# }
 
+# ========================================
+# TaskService Lambda (Unified Handler)
+# ========================================
+
+# CloudWatch Log Group for TaskService
+resource "aws_cloudwatch_log_group" "task_service_log_group" {
+  name              = "/aws/lambda/task-service-${var.environment}"
+  retention_in_days = 7
+}
+
+# TaskService Lambda Function
+resource "aws_lambda_function" "task_service_lambda" {
+
+  filename         = "${path.module}/../../taskService/target/taskService-1.0-SNAPSHOT.jar"
+  function_name    = "task-service-${var.environment}"
+  role             = aws_iam_role.lambda_execution_role.arn
+  handler          = "com.project.task.handler.UnifiedTaskHandler::handleRequest"
+  runtime          = "java21"
+  timeout          = 60
+  memory_size      = 512
+  source_code_hash = filebase64sha256("${path.module}/../../taskService/target/taskService-1.0-SNAPSHOT.jar")
+
+  environment {
+    variables = {
+      ENVIRONMENT              = var.environment
+      POWERTOOLS_SERVICE_NAME  = "task-service"
+      POWERTOOLS_LOG_LEVEL     = "INFO"
+      POWERTOOLS_LOGGER_LOG_EVENT = "true"
+    }
+  }
+
+  depends_on = [
+    aws_cloudwatch_log_group.task_service_log_group,
+    aws_iam_role_policy_attachment.lambda_basic_execution
+  ]
+}
+
+# SQS Queue for TaskService
+resource "aws_sqs_queue" "task_queue" {
+  name                       = "task-queue-${var.environment}"
+  delay_seconds              = 0
+  max_message_size           = 262144
+  message_retention_seconds  = 345600  # 4 days
+  receive_wait_time_seconds  = 0
+  visibility_timeout_seconds = 90      # 3x Lambda timeout
+
+  # Dead Letter Queue configuration
+  redrive_policy = jsonencode({
+    deadLetterTargetArn = aws_sqs_queue.task_dlq.arn
+    maxReceiveCount     = 3
+  })
+}
+
+# Dead Letter Queue for failed messages
+resource "aws_sqs_queue" "task_dlq" {
+  name                      = "task-queue-dlq-${var.environment}"
+  message_retention_seconds = 1209600  # 14 days
+}
+
+# Lambda permission for SQS to invoke
+resource "aws_lambda_permission" "allow_sqs_invoke" {
+  statement_id  = "AllowSQSInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.task_service_lambda.function_name
+  principal     = "sqs.amazonaws.com"
+  source_arn    = aws_sqs_queue.task_queue.arn
+}
+
+# SQS Event Source Mapping
+resource "aws_lambda_event_source_mapping" "task_queue_trigger" {
+  event_source_arn = aws_sqs_queue.task_queue.arn
+  function_name    = aws_lambda_function.task_service_lambda.arn
+  batch_size       = 10
+
+  # Enable batch item failures for DLQ support
+  function_response_types = ["ReportBatchItemFailures"]
+
+  depends_on = [
+    aws_lambda_permission.allow_sqs_invoke
+  ]
+}
+
+# EventBridge Rule for Scheduled Tasks (cron)
+resource "aws_cloudwatch_event_rule" "task_schedule_rule" {
+  name                = "task-schedule-${var.environment}"
+  description         = "Trigger TaskService Lambda every 5 minutes"
+  schedule_expression = "rate(5 minutes)"
+}
+
+# EventBridge target
+resource "aws_cloudwatch_event_target" "task_schedule_target" {
+  rule      = aws_cloudwatch_event_rule.task_schedule_rule.name
+  target_id = "TaskServiceLambda"
+  arn       = aws_lambda_function.task_service_lambda.arn
+}
+
+# Lambda permission for EventBridge
+resource "aws_lambda_permission" "allow_eventbridge_invoke" {
+  statement_id  = "AllowEventBridgeInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.task_service_lambda.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.task_schedule_rule.arn
+}
+
+# Lambda Function URL for HTTP/REST testing (like API Gateway)
+resource "aws_lambda_function_url" "task_service_url" {
+  function_name      = aws_lambda_function.task_service_lambda.function_name
+  authorization_type = "NONE"  # For testing only - use AWS_IAM in production
+
+  cors {
+    allow_credentials = true
+    allow_origins     = ["*"]
+    allow_methods     = ["*"]
+    allow_headers     = ["*"]
+    max_age           = 86400
+  }
+}
+
+# ========================================
+# Outputs for TaskService
+# ========================================
 # Outputs
 output "secret_arn" {
   description = "ARN of the created secret"
@@ -344,3 +400,54 @@ output "deployment_summary" {
   }
 }
 
+output "task_service_function_name" {
+  description = "TaskService Lambda function name"
+  value       = aws_lambda_function.task_service_lambda.function_name
+}
+
+output "task_service_function_arn" {
+  description = "TaskService Lambda function ARN"
+  value       = aws_lambda_function.task_service_lambda.arn
+}
+
+output "task_service_function_url" {
+  description = "TaskService Lambda Function URL for HTTP testing"
+  value       = aws_lambda_function_url.task_service_url.function_url
+}
+
+output "task_queue_url" {
+  description = "SQS Queue URL for TaskService"
+  value       = aws_sqs_queue.task_queue.url
+}
+
+output "task_queue_arn" {
+  description = "SQS Queue ARN"
+  value       = aws_sqs_queue.task_queue.arn
+}
+
+output "task_dlq_url" {
+  description = "Dead Letter Queue URL"
+  value       = aws_sqs_queue.task_dlq.url
+}
+
+output "eventbridge_rule_name" {
+  description = "EventBridge rule name for scheduled tasks"
+  value       = aws_cloudwatch_event_rule.task_schedule_rule.name
+}
+
+output "task_service_test_commands" {
+  description = "Commands to test TaskService"
+  value = {
+    # Test with Postman/curl using Function URL
+    http_test = "curl -X POST ${aws_lambda_function_url.task_service_url.function_url} -H 'Content-Type: application/json' -d '{\"test\":\"data\"}'"
+
+    # Send message to SQS
+    sqs_test = "aws sqs send-message --queue-url ${aws_sqs_queue.task_queue.url} --message-body '{\"orderId\":\"12345\"}' --endpoint-url=http://localhost:4566"
+
+    # Invoke Lambda directly
+    direct_test = "aws lambda invoke --function-name ${aws_lambda_function.task_service_lambda.function_name} --payload '{\"test\":\"data\"}' response.json --endpoint-url=http://localhost:4566"
+
+    # Check logs
+    logs_test = "aws logs tail /aws/lambda/${aws_lambda_function.task_service_lambda.function_name} --follow --endpoint-url=http://localhost:4566"
+  }
+}

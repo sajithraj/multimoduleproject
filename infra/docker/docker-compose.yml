@@ -11,7 +11,7 @@ services:
       - AWS_DEFAULT_REGION=us-east-1
       - AWS_ACCESS_KEY_ID=test
       - AWS_SECRET_ACCESS_KEY=test
-      - SERVICES=lambda,secretsmanager,logs,iam,apigateway
+      - SERVICES=lambda,secretsmanager,logs,iam,apigateway,sqs,events,cloudwatch
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"
       - "./init-aws.sh:/docker-entrypoint-initaws.d/init-aws.sh"

@@ -44,6 +44,14 @@ public class UnifiedTaskHandler implements RequestHandler<Object, Object> {
                     requestId,
                     context != null ? context.getRemainingTimeInMillis() : 0);
 
+            // Log input event details for debugging
+            if (input != null) {
+                log.info("Input event type: {}", input.getClass().getName());
+                log.debug("Input event content: {}", input);
+            } else {
+                log.warn("Input event is null");
+            }
+
             // Route to appropriate handler
             Object response = ROUTER.route(input, context);
 

@@ -26,17 +26,53 @@
         <!-- Dependency Versions -->
         <aws.sdk.version>2.30.7</aws.sdk.version>
         <aws.lambda.version>1.2.3</aws.lambda.version>
-        <aws.lambda.events.version>3.11.4</aws.lambda.events.version>
+        <aws.lambda.events.version>3.14.0</aws.lambda.events.version>
         <powertools.version>2.8.0</powertools.version>
         <httpclient.version>5.3</httpclient.version>
         <jackson.version>2.17.1</jackson.version>
         <log4j.version>2.25.3</log4j.version>
         <lombok.version>1.18.30</lombok.version>
         <junit.version>4.13.2</junit.version>
+        <mockito.version>5.8.0</mockito.version>
+
+        <!-- Security: Override Netty version to fix CVEs -->
+        <netty.version>4.1.115.Final</netty.version>
     </properties>
 
     <dependencyManagement>
         <dependencies>
+            <!-- BOMs (Bill of Materials) - Import First for transitive dependency management -->
+
+            <!-- AWS SDK BOM - Manages transitive AWS SDK dependencies and Netty versions -->
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>bom</artifactId>
+                <version>${aws.sdk.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+
+            <!-- Jackson BOM - Manages transitive Jackson dependencies -->
+            <dependency>
+                <groupId>com.fasterxml.jackson</groupId>
+                <artifactId>jackson-bom</artifactId>
+                <version>${jackson.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- Netty BOM - Security: Forces all transitive Netty to secure version -->
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-bom</artifactId>
+                <version>${netty.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- Direct Dependencies - Explicit versions for clarity -->
+
             <!-- AWS SDK -->
             <dependency>
                 <groupId>software.amazon.awssdk</groupId>
@@ -55,13 +91,6 @@
                 <groupId>com.amazonaws</groupId>
                 <artifactId>aws-lambda-java-events</artifactId>
                 <version>${aws.lambda.events.version}</version>
-            </dependency>
-
-            <!-- Log4j2 -->
-            <dependency>
-                <groupId>org.apache.logging.log4j</groupId>
-                <artifactId>log4j-core</artifactId>
-                <version>${log4j.version}</version>
             </dependency>
 
             <!-- Powertools v2 -->
@@ -96,7 +125,7 @@
                 <version>${httpclient.version}</version>
             </dependency>
 
-            <!-- Jackson -->
+            <!-- Jackson - explicit version for consistency -->
             <dependency>
                 <groupId>com.fasterxml.jackson.core</groupId>
                 <artifactId>jackson-databind</artifactId>
@@ -123,11 +152,24 @@
                 <version>${log4j.version}</version>
             </dependency>
 
+            <dependency>
+                <groupId>org.apache.logging.log4j</groupId>
+                <artifactId>log4j-api</artifactId>
+                <version>${log4j.version}</version>
+            </dependency>
+
             <!-- Testing -->
             <dependency>
                 <groupId>junit</groupId>
                 <artifactId>junit</artifactId>
                 <version>${junit.version}</version>
+                <scope>test</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.mockito</groupId>
+                <artifactId>mockito-core</artifactId>
+                <version>${mockito.version}</version>
                 <scope>test</scope>
             </dependency>
 

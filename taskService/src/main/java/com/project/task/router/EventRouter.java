@@ -9,6 +9,7 @@ import com.amazonaws.services.lambda.runtime.events.ScheduledEvent;
 import com.project.task.handler.EventBridgeHandler;
 import com.project.task.model.InvocationType;
 import com.project.task.service.TaskService;
+import com.project.task.util.EventDeserializer;
 import com.project.task.util.InvocationTypeDetector;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -29,6 +30,7 @@ public class EventRouter {
 
     /**
      * Route the event to the appropriate handler.
+     * Handles both typed AWS events and LinkedHashMap (deserialized JSON).
      *
      * @param input   The Lambda input event
      * @param context Lambda context
@@ -41,9 +43,9 @@ public class EventRouter {
         log.info("Invocation type detected: {}", type.getDisplayName());
 
         return switch (type) {
-            case API_GATEWAY -> handleApiGateway((APIGatewayProxyRequestEvent) input, context);
-            case SQS -> handleSqs((SQSEvent) input, context);
-            case EVENT_BRIDGE -> handleEventBridge((ScheduledEvent) input, context);
+            case API_GATEWAY -> handleApiGateway(input, context);
+            case SQS -> handleSqs(input, context);
+            case EVENT_BRIDGE -> handleEventBridge(input, context);
         };
     }
 
@@ -51,9 +53,11 @@ public class EventRouter {
      * Handle API Gateway events - routes to specific endpoint handlers.
      * Supports multiple endpoints: /ping, /get, /id/{id}, /post
      */
-    private APIGatewayProxyResponseEvent handleApiGateway(
-            APIGatewayProxyRequestEvent event,
-            Context context) {
+    private APIGatewayProxyResponseEvent handleApiGateway(Object input, Context context) {
+        // Convert LinkedHashMap to typed AWS event
+        APIGatewayProxyRequestEvent event = (input instanceof APIGatewayProxyRequestEvent)
+                ? (APIGatewayProxyRequestEvent) input
+                : EventDeserializer.toApiGatewayEvent(input);
 
         log.info("Handling API Gateway request: method={}, path={}",
                 event.getHttpMethod(), event.getPath());
@@ -67,7 +71,12 @@ public class EventRouter {
      *
      * @return SQSBatchResponse with failed message IDs (if any)
      */
-    private SQSBatchResponse handleSqs(SQSEvent event, Context context) {
+    private SQSBatchResponse handleSqs(Object input, Context context) {
+        // Convert LinkedHashMap to typed AWS event
+        SQSEvent event = (input instanceof SQSEvent)
+                ? (SQSEvent) input
+                : EventDeserializer.toSqsEvent(input);
+
         int messageCount = event.getRecords().size();
         log.info("Handling SQS event with {} messages", messageCount);
 
@@ -113,7 +122,12 @@ public class EventRouter {
      * Handle EventBridge events - supports both scheduled tasks and custom events.
      * Automatically detects event type and routes appropriately.
      */
-    private String handleEventBridge(ScheduledEvent event, Context context) {
+    private String handleEventBridge(Object input, Context context) {
+        // Convert LinkedHashMap to typed AWS event
+        ScheduledEvent event = (input instanceof ScheduledEvent)
+                ? (ScheduledEvent) input
+                : EventDeserializer.toScheduledEvent(input);
+
         log.info("Handling EventBridge event: source={}, detailType={}",
                 event.getSource(), event.getDetailType());
 
