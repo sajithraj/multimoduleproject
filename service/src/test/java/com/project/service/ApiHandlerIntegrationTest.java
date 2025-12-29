@@ -30,11 +30,37 @@ public class ApiHandlerIntegrationTest {
 
     @Before
     public void setUp() {
-        // Set AWS region for local testing to prevent SDK errors
-        System.setProperty("aws.region", "us-east-1");
+        // Set required environment variables for testing
+        System.setProperty("AWS_REGION", "us-east-1");
+
+        // Set required environment variables that SSMApigeeProvider needs
+        if (System.getenv("TOKEN_ENDPOINT_URL") == null) {
+            setEnv("TOKEN_ENDPOINT_URL", "https://test.example.com/oauth/token");
+        }
+        if (System.getenv("TOKEN_SECRET_NAME") == null) {
+            setEnv("TOKEN_SECRET_NAME", "test/secret");
+        }
+        if (System.getenv("EXTERNAL_API_URL") == null) {
+            setEnv("EXTERNAL_API_URL", "https://test.example.com/api");
+        }
 
         handler = new ApiHandler();
         mockContext = new MockContext();
+    }
+
+    /**
+     * Helper method to set environment variables for testing.
+     * Note: This is a workaround for testing. In real Lambda, env vars are set by AWS.
+     */
+    private void setEnv(String key, String value) {
+        try {
+            java.lang.reflect.Field env = System.getenv().getClass().getDeclaredField("m");
+            env.setAccessible(true);
+            ((java.util.Map<String, String>) env.get(System.getenv())).put(key, value);
+        } catch (Exception e) {
+            // If reflection fails, set as system property as fallback
+            System.setProperty(key, value);
+        }
     }
 
     /**

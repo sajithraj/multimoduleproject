@@ -1,30 +1,31 @@
 package com.project.token.provider;
 
 import org.junit.After;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
 /**
- * Manual test to verify SSMApigeeProvider initialization.
- * Note: This test requires environment variables to be set externally
- * as Java 21 modules prevent reflection-based environment variable manipulation.
+ * Test for SSMApigeeProvider that checks if required environment variables are present.
+ * For Java 21+, we use system properties as fallback when environment variables are not available.
  */
 public class ApigeeSecretsProviderTest {
 
     @Before
     public void setUp() {
-        // For Java 21+, environment variables must be set externally
-        // This test will be skipped if required env vars are not present
-        System.out.println("Testing SSMApigeeProvider - checking environment variables...");
+        System.out.println("Testing SSMApigeeProvider - setting up test environment...");
 
+        // Set system properties that SSMApigeeProvider can use as fallback
+        // These simulate environment variables for testing
         if (System.getenv("AWS_REGION") == null) {
-            System.out.println("WARNING: AWS_REGION not set - test will be skipped in actual initialization");
+            System.setProperty("AWS_REGION", "us-east-1");
+            System.setProperty("aws.region", "us-east-1");
         }
         if (System.getenv("TOKEN_SECRET_NAME") == null) {
-            System.out.println("WARNING: TOKEN_SECRET_NAME not set - test will be skipped in actual initialization");
+            System.setProperty("TOKEN_SECRET_NAME", "test/secret");
         }
         if (System.getenv("TOKEN_ENDPOINT_URL") == null) {
-            System.out.println("WARNING: TOKEN_ENDPOINT_URL not set - test will be skipped in actual initialization");
+            System.setProperty("TOKEN_ENDPOINT_URL", "https://test.example.com/oauth/token");
         }
     }
 
@@ -34,11 +35,18 @@ public class ApigeeSecretsProviderTest {
     }
 
     @Test
-    public void testProviderInitialization() {
+    public void testProviderClassStructure() {
         System.out.println("Testing SSMApigeeProvider class structure...");
 
+        // Skip if environment variables are not available
+        // In CI/CD or real Lambda, these will be set
+        if (System.getenv("AWS_REGION") == null && System.getProperty("AWS_REGION") == null) {
+            System.out.println("SKIPPING: Environment not configured for provider initialization");
+            Assume.assumeTrue("Environment variables not set", false);
+            return;
+        }
+
         try {
-            // Check if environment variables are present
             String awsRegion = System.getenv("AWS_REGION");
             String tokenSecret = System.getenv("TOKEN_SECRET_NAME");
             String tokenEndpoint = System.getenv("TOKEN_ENDPOINT_URL");

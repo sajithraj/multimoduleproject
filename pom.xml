@@ -166,6 +166,26 @@
                     <artifactId>maven-shade-plugin</artifactId>
                     <version>3.5.1</version>
                 </plugin>
+
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>3.2.5</version>
+                    <configuration>
+                        <systemPropertyVariables>
+                            <!-- Set test environment variables -->
+                            <AWS_REGION>us-east-1</AWS_REGION>
+                            <aws.region>us-east-1</aws.region>
+                            <TOKEN_ENDPOINT_URL>https://test.example.com/oauth/token</TOKEN_ENDPOINT_URL>
+                            <TOKEN_SECRET_NAME>test/secret</TOKEN_SECRET_NAME>
+                            <EXTERNAL_API_URL>https://test.example.com/api</EXTERNAL_API_URL>
+                        </systemPropertyVariables>
+                        <argLine>
+                            --add-opens java.base/java.util=ALL-UNNAMED
+                            --add-opens java.base/java.lang=ALL-UNNAMED
+                        </argLine>
+                    </configuration>
+                </plugin>
             </plugins>
         </pluginManagement>
     </build>

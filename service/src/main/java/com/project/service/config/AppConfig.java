@@ -27,13 +27,21 @@ public final class AppConfig {
     /**
      * Retrieves required environment variable.
      * Throws exception if not set.
+     * Supports system properties as fallback for testing.
      *
      * @param key Environment variable name
      * @return Environment variable value
      * @throws IllegalStateException if variable not set
      */
     private static String getRequiredEnv(String key) {
+        // Try environment variable first (production)
         String value = System.getenv(key);
+
+        // Fallback to system property (testing)
+        if (value == null || value.trim().isEmpty()) {
+            value = System.getProperty(key);
+        }
+
         if (value == null || value.trim().isEmpty()) {
             log.error("Required environment variable not set: {}", key);
             throw new IllegalStateException("Required environment variable not set: " + key);

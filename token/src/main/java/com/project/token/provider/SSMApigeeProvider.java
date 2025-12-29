@@ -35,7 +35,14 @@ public class SSMApigeeProvider extends BaseProvider {
     private final SecretsManagerClient client;
 
     private static String getRequiredEnv(String name) {
+        // Try environment variable first (production)
         String val = System.getenv(name);
+
+        // Fallback to system property (testing)
+        if (val == null || val.trim().isEmpty()) {
+            val = System.getProperty(name);
+        }
+
         if (val == null || val.trim().isEmpty()) {
             throw new IllegalStateException("Required environment variable '" + name + "' is not set.");
         }
