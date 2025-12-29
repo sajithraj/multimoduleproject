@@ -45,6 +45,7 @@ public class ApiGatewayRouter {
                 case "/ping" -> handlePing(event, context);
                 case "/get" -> handleGet(event, context);
                 case "/post" -> handlePost(event, context);
+                case "/tasks" -> handleTasks(event, context);  // Generic task endpoint
                 default -> {
                     // Handle dynamic paths like /id/{id}
                     if (path.startsWith("/id/")) {
@@ -140,6 +141,25 @@ public class ApiGatewayRouter {
     }
 
     /**
+     * Handle /tasks endpoint - Generic task operations
+     * Supports both GET (list tasks) and POST (create task)
+     */
+    private APIGatewayProxyResponseEvent handleTasks(
+            APIGatewayProxyRequestEvent event,
+            Context context) {
+
+        String method = event.getHttpMethod();
+        log.info("Handling {} /tasks request", method);
+
+        return switch (method) {
+            case "GET" -> taskService.processGetAll(event, context);
+            case "POST" -> taskService.processApiRequest(event, context);
+            default -> buildErrorResponse(405,
+                    "Method not allowed. Use GET or POST.");
+        };
+    }
+
+    /**
      * Handle 404 - Not Found
      */
     private APIGatewayProxyResponseEvent handleNotFound(String path, String method) {
@@ -152,7 +172,9 @@ public class ApiGatewayRouter {
                 "GET /ping",
                 "GET /get",
                 "GET /id/{id}",
-                "POST /post"
+                "POST /post",
+                "GET /tasks",
+                "POST /tasks"
         });
 
         return buildResponse(404, errorBody);

@@ -3,14 +3,18 @@ package com.project.task.router;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
-import com.amazonaws.services.lambda.runtime.events.ScheduledEvent;
+import com.amazonaws.services.lambda.runtime.events.SQSBatchResponse;
 import com.amazonaws.services.lambda.runtime.events.SQSEvent;
+import com.amazonaws.services.lambda.runtime.events.ScheduledEvent;
 import com.project.task.handler.EventBridgeHandler;
 import com.project.task.model.InvocationType;
 import com.project.task.service.TaskService;
 import com.project.task.util.InvocationTypeDetector;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Routes Lambda invocations to appropriate handlers based on event source type.
@@ -58,21 +62,51 @@ public class EventRouter {
     }
 
     /**
-     * Handle SQS events.
+     * Handle SQS events with batch item failure handling.
+     * Failed messages will be returned to SQS for retry/DLQ routing.
+     *
+     * @return SQSBatchResponse with failed message IDs (if any)
      */
-    private String handleSqs(SQSEvent event, Context context) {
+    private SQSBatchResponse handleSqs(SQSEvent event, Context context) {
         int messageCount = event.getRecords().size();
         log.info("Handling SQS event with {} messages", messageCount);
 
-        event.getRecords().forEach(message -> {
-            log.debug("Processing SQS message: messageId={}", message.getMessageId());
-            SERVICE.processSqsMessage(message, context);
-        });
+        List<SQSBatchResponse.BatchItemFailure> batchItemFailures = new ArrayList<>();
 
-        log.info("Successfully processed {} SQS messages", messageCount);
+        // Process each message and track failures
+        for (SQSEvent.SQSMessage message : event.getRecords()) {
+            String messageId = message.getMessageId();
+            log.debug("Processing SQS message: messageId={}", messageId);
 
-        // IMPORTANT: Return success to avoid message re-drive
-        return "OK";
+            try {
+                SERVICE.processSqsMessage(message, context);
+                log.debug("Successfully processed message: messageId={}", messageId);
+
+            } catch (Exception e) {
+                log.error("Failed to process SQS message: messageId={}, error={}",
+                        messageId, e.getMessage(), e);
+
+                // Add to batch item failures - will be retried or sent to DLQ
+                batchItemFailures.add(SQSBatchResponse.BatchItemFailure.builder()
+                        .withItemIdentifier(messageId)
+                        .build());
+            }
+        }
+
+        int successCount = messageCount - batchItemFailures.size();
+        int failureCount = batchItemFailures.size();
+
+        log.info("SQS batch processing complete: total={}, success={}, failures={}",
+                messageCount, successCount, failureCount);
+
+        if (!batchItemFailures.isEmpty()) {
+            log.warn("Returning {} failed message IDs to SQS for retry/DLQ", failureCount);
+        }
+
+        // Return batch response with failures (empty list if all succeeded)
+        return SQSBatchResponse.builder()
+                .withBatchItemFailures(batchItemFailures)
+                .build();
     }
 
     /**
