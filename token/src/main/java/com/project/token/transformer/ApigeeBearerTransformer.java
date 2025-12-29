@@ -2,7 +2,6 @@ package com.project.token.transformer;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import jakarta.validation.constraints.NotNull;
 import org.apache.hc.core5.ssl.SSLContexts;
 import org.apache.logging.log4j.LogManager;
@@ -25,7 +24,6 @@ import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.time.Duration;
-import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Base64;
 
@@ -107,7 +105,6 @@ public class ApigeeBearerTransformer extends BasicTransformer {
 
         this.timeoutSeconds = getTimeoutValue();
         this.mapper = new ObjectMapper();
-        this.mapper.registerModule(new JavaTimeModule());
 
         log.info("ApigeeBearerTransformer initialized successfully, endpoint: {}", this.tokenEndpointUrl);
     }
@@ -153,11 +150,26 @@ public class ApigeeBearerTransformer extends BasicTransformer {
             );
 
             if (HttpStatusCode.OK == response.statusCode()) {
-                log.info("Successfully retrieved OAuth2 bearer token from endpoint: {}", this.tokenEndpointUrl);
-                return mapper.readValue(
-                        response.body(),
-                        ApigeeOauthResponse.class
-                ).accessToken();
+                String responseBody = response.body();
+                log.info("Successfully retrieved OAuth2 response from endpoint: {}", this.tokenEndpointUrl);
+                log.debug("OAuth2 response body: {}", responseBody);
+
+                try {
+                    ApigeeOauthResponse oauthResponse = mapper.readValue(responseBody, ApigeeOauthResponse.class);
+                    String accessToken = oauthResponse.accessToken();
+
+                    if (accessToken == null || accessToken.isEmpty()) {
+                        log.error("OAuth2 response contains null or empty access_token. Response: {}", responseBody);
+                        throw new RuntimeException("OAuth2 response missing access_token");
+                    }
+
+                    log.info("Successfully extracted bearer token (length: {} characters)", accessToken.length());
+                    return accessToken;
+
+                } catch (Exception e) {
+                    log.error("Failed to parse OAuth2 response. Response body: {}", responseBody, e);
+                    throw new RuntimeException("Failed to parse OAuth2 response: " + e.getMessage(), e);
+                }
             } else {
                 int statusCode = response.statusCode();
                 String responseBody = response.body();
@@ -198,7 +210,7 @@ public class ApigeeBearerTransformer extends BasicTransformer {
 
     record ApigeeOauthResponse(
             @JsonProperty("token_type") String tokenType,
-            @JsonProperty("issued_at") Instant issuedAt,
+            @JsonProperty("issued_at") String issuedAt,  // Changed from Instant to String
             @JsonProperty("access_token") String accessToken,
             @JsonProperty("expires_in") Long expiresIn
     ) implements Serializable {
