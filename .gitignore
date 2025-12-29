@@ -1,26 +1,43 @@
 # ============================================
-# Java / Maven
+# Multi-Module Lambda Project - .gitignore
 # ============================================
-target/
+
+# ============================================
+# Java / Maven Build Artifacts
+# ============================================
+# Compiled class files
+*.class
+
+# Package files (JAR, WAR, EAR)
 *.jar
 *.war
 *.ear
-*.class
-*.log
-dependency-reduced-pom.xml
 
-# Maven Wrapper
+# Build directories
+target/
+build/
+dist/
+out/
+
+# Maven generated files
+dependency-reduced-pom.xml
 .mvn/wrapper/maven-wrapper.jar
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.properties
+
+# Generated sources
+generated/
+generated-sources/
+generated-test-sources/
 
 # ============================================
-# IDE
+# IDE Files
 # ============================================
 # IntelliJ IDEA
 .idea/
 *.iml
 *.iws
 *.ipr
-out/
 
 # Eclipse
 .classpath
@@ -35,92 +52,81 @@ bin/
 # NetBeans
 nbproject/
 nbbuild/
-dist/
 nbdist/
 .nb-gradle/
 
 # ============================================
-# Terraform
+# Terraform / Infrastructure
 # ============================================
-# Local .terraform directories
-**/.terraform/*
-
-# Terraform state files
+# Terraform state and lock files
 *.tfstate
 *.tfstate.*
 *.tfstate.backup
+.terraform.lock.hcl
 
-# Crash log files
-crash.log
-crash.*.log
+# Terraform directories (IMPORTANT: Excludes large provider binaries)
+**/.terraform/*
+**/.terraform/providers/**
 
-# Exclude all .tfvars files
+# Terraform variable files (may contain sensitive data)
 *.tfvars
 *.tfvars.json
+terraform.tfvars
+terraform.tfvars.json
 
-# Override files
+# Terraform overrides
 override.tf
 override.tf.json
 *_override.tf
 *_override.tf.json
 
-# CLI configuration files
+# Terraform CLI config
 .terraformrc
 terraform.rc
 
-# Terraform lock file
-.terraform.lock.hcl
-
-# Terraform provider binaries (CRITICAL - These are huge!)
-**/.terraform/providers/**
+# Terraform crash logs
+crash.log
+crash.*.log
 
 # ============================================
-# AWS / LocalStack
+# AWS / Secrets
 # ============================================
+# AWS credentials
 .aws/
+aws-credentials
+
+# Private keys and certificates (SENSITIVE)
 *.pem
 *.key
-
-# ============================================
-# Operating System
-# ============================================
-# macOS
-.DS_Store
-.AppleDouble
-.LSOverride
-
-# Windows
-Thumbs.db
-ehthumbs.db
-Desktop.ini
-$RECYCLE.BIN/
-
-# Linux
-*~
-
-# ============================================
-# Project Specific
-# ============================================
-# Response files
-response*.json
-r1.json
-test*.json
-
-# Certificate files (sensitive)
-*.crt
-*.cer
 *.p12
 *.pfx
+*.crt
+*.cer
 
-# Compressed files
-*.zip
-*.7z
-*.tar.gz
-*.rar
+# LocalStack volumes
+localstack/
 
+# ============================================
 # Logs
-logs/
+# ============================================
+# Log files
 *.log
+logs/
+*.log.*
+
+# Test logs
+test-output/
+test-results/
+
+# ============================================
+# Temporary / Test Files
+# ============================================
+# Response/test JSON files
+response*.json
+r1.json
+r2.json
+r3.json
+test*.json
 
 # Temporary files
 tmp/
@@ -131,67 +137,117 @@ temp/
 *.swo
 *~
 
-# Environment files
+# ============================================
+# Environment Files
+# ============================================
 .env
 .env.local
 .env.*.local
+.env.test
+.env.production
 
 # ============================================
-# Documentation (Keep)
+# Operating System Files
 # ============================================
-# Keep all markdown files
-!*.md
-!**/*.md
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
 
-# ============================================
-# Source Code (Keep)
-# ============================================
-# Keep all source code
-!src/**
-!**/src/**
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
 
-# Keep POM files
-!pom.xml
-!**/pom.xml
-
-# Keep Terraform configs (but not providers/state)
-!**/*.tf
-!infra/terraform/*.tf
-!infra/terraform/*.sh
-!infra/terraform/*.ps1
-
-# Keep resources
-!**/resources/**
-!src/main/resources/**
-!src/test/resources/**
+# Linux
+*~
+.directory
+.Trash-*
 
 # ============================================
-# Build outputs (Ignore)
+# Compressed Archives
 # ============================================
-build/
-dist/
-generated/
-generated-sources/
-generated-test-sources/
-
-# Maven specific
-.mvn/timing.properties
-.mvn/wrapper/maven-wrapper.properties
+*.zip
+*.7z
+*.tar.gz
+*.rar
+*.gz
+*.bz2
 
 # ============================================
-# Other
+# Coverage / Test Reports
 # ============================================
-# Package Files
-node_modules/
-package-lock.json
-yarn.lock
-
-# Coverage reports
 coverage/
 *.coverage
 .nyc_output/
+htmlcov/
+.coverage.*
 
-# Test output
-test-output/
-test-results/
+# ============================================
+# Node (if any JavaScript tooling used)
+# ============================================
+node_modules/
+package-lock.json
+yarn.lock
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ============================================
+# Python (if any Python scripts used)
+# ============================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+env/
+
+# ============================================
+# Keep These Important Files
+# ============================================
+# Documentation (always keep)
+!README.md
+!CONTRIBUTING.md
+!LICENSE
+!**/*.md
+
+# Source code (always keep)
+!src/**
+!**/src/**
+
+# Build configuration (always keep)
+!pom.xml
+!**/pom.xml
+
+# Infrastructure config (always keep)
+!**/*.tf
+!**/*.sh
+!**/*.ps1
+
+# Resources (always keep)
+!**/resources/**
+
+# ============================================
+# Project-Specific Exclusions
+# ============================================
+# Old documentation folders (already removed)
+documentaion/
+code_fixes/
+
+# Backup POMs
+pom-parent.xml
+
+# Trust/policy JSON files
+secrets-policy.json
+trust-policy.json
+
+# ============================================
+# End of .gitignore
+# ============================================
 

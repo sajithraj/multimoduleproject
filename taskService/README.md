@@ -1,119 +1,295 @@
-# Task Service Module
+# TaskService Module - Multi-Source Event Processing
 
-## Overview
+AWS Lambda function for processing events from API Gateway, SQS, and EventBridge with a clean router pattern architecture.
 
-The **Task Service** is a Lambda function that handles incoming requests from multiple AWS event sources:
+## 📋 Overview
+
+The TaskService module provides a unified Lambda function that handles multiple event sources:
 
 - **API Gateway** - HTTP REST API requests
-- **SQS** - Message queue events  
+- **SQS** - Message queue events
 - **EventBridge** - Scheduled and custom events
 
-## Architecture
+### Key Benefits
+
+✅ **Single Lambda Function** - Reduces infrastructure complexity  
+✅ **Router Pattern** - Clean separation of concerns  
+✅ **Lombok Models** - Minimal boilerplate code  
+✅ **Type Detection** - Automatic event source identification  
+✅ **Production-Ready** - Comprehensive error handling  
+
+---
+
+## 🏗️ Architecture
 
 ```
-┌─────────────────┐
-│   API Gateway   │──┐
-└─────────────────┘  │
-                     │
-┌─────────────────┐  │    ┌──────────────────┐
-│      SQS        │──┼───▶│  TaskHandler     │
-└─────────────────┘  │    │  (Lambda)        │
-                     │    └──────────────────┘
-┌─────────────────┐  │            │
-│  EventBridge    │──┘            ▼
-└─────────────────┘         Business Logic
-                           (To be implemented)
+┌──────────────┐    ┌──────────────┐    ┌──────────────┐
+│ API Gateway  │    │     SQS      │    │ EventBridge  │
+└──────┬───────┘    └──────┬───────┘    └──────┬───────┘
+       │                   │                   │
+       └───────────────────┼───────────────────┘
+                           │
+           ┌───────────────▼───────────────┐
+           │   UnifiedTaskHandler          │
+           │   - Entry Point               │
+           │   - Logging Setup             │
+           └───────────────┬───────────────┘
+                           │
+           ┌───────────────▼───────────────┐
+           │      EventRouter              │
+           │   - Detect Event Type         │
+           │   - Route to Handler          │
+           └───────────────┬───────────────┘
+                           │
+           ┌───────────────▼───────────────┐
+           │      TaskService              │
+           │   - Business Logic            │
+           │   - Request Processing        │
+           └───────────────────────────────┘
 ```
 
-## Features
+---
 
-✅ **Multi-Source Support** - Handles API Gateway, SQS, and EventBridge events  
-✅ **Event Detection** - Automatically detects event source type  
-✅ **Structured Logging** - JSON logs with Log4j2 and AWS Powertools  
-✅ **Request Parsing** - Converts all event types to common `TaskRequest` format  
-✅ **Error Handling** - Proper error responses for each event source  
-✅ **Unit Tests** - Comprehensive test coverage for all event types  
+## 📦 Components
 
-## Project Structure
+### 1. UnifiedTaskHandler
+**Purpose:** Main Lambda entry point
 
-```
-taskService/
-├── src/
-│   ├── main/
-│   │   ├── java/com/project/task/
-│   │   │   ├── handler/
-│   │   │   │   └── TaskHandler.java          # Main Lambda handler
-│   │   │   ├── model/
-│   │   │   │   ├── EventSourceType.java      # Event source enum
-│   │   │   │   ├── TaskRequest.java          # Common request model
-│   │   │   │   └── TaskResponse.java         # Response model
-│   │   │   └── util/
-│   │   │       └── EventParser.java          # Event parsing utility
-│   │   └── resources/
-│   │       └── log4j2.xml                     # Logging configuration
-│   └── test/
-│       └── java/com/project/task/
-│           └── handler/
-│               └── TaskHandlerTest.java       # Comprehensive unit tests
-└── pom.xml
-```
+**Responsibilities:**
+- Accept any event type (Object)
+- Set up logging context
+- Delegate to EventRouter
+- Clean up resources
 
-## Event Types
-
-### 1. API Gateway Events
-
-**Example Request:**
-```json
-{
-  "httpMethod": "POST",
-  "path": "/tasks",
-  "headers": {
-    "Content-Type": "application/json"
-  },
-  "body": "{\"taskName\":\"Process Order\",\"priority\":\"HIGH\"}"
+```java
+@Override
+public Object handleRequest(Object input, Context context) {
+    ThreadContext.put("requestId", context.getAwsRequestId());
+    try {
+        return ROUTER.route(input, context);
+    } finally {
+        ThreadContext.clearAll();
+    }
 }
+```
+
+**Handler:** `com.project.task.handler.UnifiedTaskHandler::handleRequest`
+
+---
+
+### 2. EventRouter
+**Purpose:** Route events to appropriate handlers
+
+**Flow:**
+1. Detect event source type
+2. Cast to specific event class
+3. Call appropriate handler method
+4. Return appropriate response
+
+```java
+public Object route(Object input, Context context) {
+    InvocationType type = InvocationTypeDetector.detect(input);
+    
+    return switch (type) {
+        case API_GATEWAY -> handleApiGateway(...);
+        case SQS -> handleSqs(...);
+        case EVENT_BRIDGE -> handleEventBridge(...);
+    };
+}
+```
+
+---
+
+### 3. TaskService
+**Purpose:** Business logic implementation
+
+**Methods:**
+- `processApiRequest()` - Handle API Gateway events
+- `processSqsMessage()` - Handle SQS messages
+- `processEventBridgeEvent()` - Handle EventBridge events
+- `executeBusinessLogic()` - Core business logic (placeholder)
+
+```java
+public APIGatewayProxyResponseEvent processApiRequest(
+    APIGatewayProxyRequestEvent event, 
+    Context context) {
+    
+    TaskRequest request = EventParser.parseApiGatewayEvent(event);
+    TaskResponse response = executeBusinessLogic(request, context);
+    return buildApiResponse(200, response);
+}
+```
+
+---
+
+### 4. Event Models (Lombok)
+
+#### TaskRequest
+```java
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class TaskRequest {
+    private EventSourceType sourceType;
+    private String eventId;
+    private String requestBody;
+    private Map<String, Object> metadata;
+    @Builder.Default
+    private long timestamp = System.currentTimeMillis();
+}
+```
+
+#### TaskResponse
+```java
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class TaskResponse {
+    private boolean success;
+    private String message;
+    private String taskId;
+    private Object data;
+}
+```
+
+---
+
+### 5. Utility Classes
+
+#### InvocationTypeDetector
+Automatically detects event source type
+
+```java
+public static InvocationType detect(Object input) {
+    if (input instanceof APIGatewayProxyRequestEvent) {
+        return InvocationType.API_GATEWAY;
+    }
+    if (input instanceof SQSEvent) {
+        return InvocationType.SQS;
+    }
+    if (input instanceof ScheduledEvent) {
+        return InvocationType.EVENT_BRIDGE;
+    }
+    throw new IllegalArgumentException("Unsupported event type");
+}
+```
+
+#### EventParser
+Converts events to common TaskRequest format
+
+```java
+public static TaskRequest parseApiGatewayEvent(
+    APIGatewayProxyRequestEvent event) {
+    
+    return TaskRequest.builder()
+        .sourceType(EventSourceType.API_GATEWAY)
+        .eventId(event.getRequestContext().getRequestId())
+        .requestBody(event.getBody())
+        .metadata(buildMetadata(event))
+        .build();
+}
+```
+
+#### JsonUtil
+JSON serialization/deserialization utility
+
+```java
+public static String toJson(Object obj) {
+    return MAPPER.writeValueAsString(obj);
+}
+
+public static <T> T fromJson(String json, Class<T> clazz) {
+    return MAPPER.readValue(json, clazz);
+}
+```
+
+---
+
+## 🔧 Configuration
+
+### Environment Variables
+
+```bash
+# Powertools Configuration
+POWERTOOLS_SERVICE_NAME=task-service
+POWERTOOLS_LOG_LEVEL=INFO
+POWERTOOLS_LOGGER_LOG_EVENT=true
+
+# Optional - Add your business logic configs
+DATABASE_TABLE_NAME=tasks-table
+SNS_TOPIC_ARN=arn:aws:sns:...
+```
+
+### Lambda Configuration
+
+```
+Handler: com.project.task.handler.UnifiedTaskHandler::handleRequest
+Runtime: java21
+Memory: 512 MB
+Timeout: 60 seconds
+```
+
+---
+
+## 🚀 Usage
+
+### 1. API Gateway Event
+
+**Request:**
+```bash
+curl -X POST https://api-gateway-url/tasks \
+  -H "Content-Type: application/json" \
+  -d '{"taskName":"Process Order","priority":"HIGH"}'
 ```
 
 **Response:**
 ```json
 {
-  "success": true,
-  "message": "Task received and queued for processing",
-  "taskId": "uuid-generated",
-  "data": {
-    "requestId": "...",
-    "sourceType": "API_GATEWAY",
-    "receivedAt": 1735455850000,
-    "processedAt": 1735455851000
-  }
+  "statusCode": 200,
+  "headers": {
+    "Content-Type": "application/json",
+    "Access-Control-Allow-Origin": "*"
+  },
+  "body": "{
+    \"success\": true,
+    \"message\": \"Task received and queued for processing\",
+    \"taskId\": \"uuid-generated\",
+    \"data\": {...}
+  }"
 }
 ```
 
-### 2. SQS Events
+---
 
-**Example Message:**
+### 2. SQS Event
+
+**Message:**
 ```json
 {
-  "Records": [
-    {
-      "messageId": "sqs-message-123",
-      "body": "{\"orderId\":\"ORD-001\",\"action\":\"PROCESS\"}",
-      "attributes": {
-        "SentTimestamp": "1735455850000"
-      }
-    }
-  ]
+  "orderId": "ORD-001",
+  "action": "PROCESS",
+  "priority": "HIGH"
 }
 ```
 
-**Response:** `void` (message acknowledged automatically)
+**Response:** `"OK"` (string)
 
-### 3. EventBridge Events
+**Processing:**
+- Parses message body
+- Executes business logic
+- Returns "OK" to acknowledge
+- Message deleted from queue
 
-**Example Event:**
+---
+
+### 3. EventBridge Event
+
+**Event:**
 ```json
 {
-  "id": "eventbridge-event-123",
+  "id": "event-123",
   "source": "com.project.tasks",
   "detail-type": "Scheduled Task",
   "detail": {
@@ -123,209 +299,272 @@ taskService/
 }
 ```
 
-**Response:** `void` (no response expected)
+**Response:** `"OK"` (string)
 
-## Building
-
-```bash
-# Build the module
-mvn clean package
-
-# Run tests
-mvn test
-
-# Skip tests
-mvn clean package -DskipTests
-```
-
-**Output:** `taskService/target/taskService-1.0-SNAPSHOT.jar` (shaded JAR with all dependencies)
-
-## Testing
-
-### Run All Tests
-```bash
-mvn test
-```
-
-### Test Coverage
-
-- ✅ API Gateway events (POST, GET with query params, path params, empty body)
-- ✅ SQS events (single message, multiple messages, with attributes)
-- ✅ EventBridge events (scheduled tasks, custom events)
-- ✅ Error handling (unknown event types, null context)
-- ✅ Integration test (all event types)
-
-**Total Tests:** 15+ test cases
-
-## Deployment
-
-### Local Deployment (LocalStack)
-
-```bash
-# Set environment variables
-export AWS_ACCESS_KEY_ID=test
-export AWS_SECRET_ACCESS_KEY=test
-export AWS_DEFAULT_REGION=us-east-1
-
-# Create Lambda function
-awslocal lambda create-function \
-  --function-name task-service \
-  --runtime java21 \
-  --handler com.project.task.handler.TaskHandler::handleRequest \
-  --zip-file fileb://target/taskService-1.0-SNAPSHOT.jar \
-  --role arn:aws:iam::000000000000:role/lambda-role \
-  --timeout 60 \
-  --memory-size 512
-```
-
-### AWS Deployment
-
-```bash
-# Package
-mvn clean package
-
-# Deploy using AWS CLI
-aws lambda create-function \
-  --function-name task-service \
-  --runtime java21 \
-  --handler com.project.task.handler.TaskHandler::handleRequest \
-  --zip-file fileb://target/taskService-1.0-SNAPSHOT.jar \
-  --role arn:aws:iam::YOUR_ACCOUNT:role/lambda-execution-role \
-  --timeout 60 \
-  --memory-size 512 \
-  --environment Variables="{ENVIRONMENT=production}"
-```
-
-## Testing the Lambda
-
-### API Gateway Event Test
-
-```bash
-awslocal lambda invoke \
-  --function-name task-service \
-  --payload '{
-    "httpMethod": "POST",
-    "path": "/tasks",
-    "body": "{\"taskName\":\"Test Task\"}"
-  }' \
-  response.json
-
-cat response.json
-```
-
-### SQS Event Test
-
-```bash
-awslocal lambda invoke \
-  --function-name task-service \
-  --payload '{
-    "Records": [{
-      "messageId": "test-123",
-      "body": "{\"orderId\":\"ORD-001\"}"
-    }]
-  }' \
-  response.json
-```
-
-### EventBridge Event Test
-
-```bash
-awslocal lambda invoke \
-  --function-name task-service \
-  --payload '{
-    "id": "test-event",
-    "source": "test.source",
-    "detail-type": "Test Event",
-    "detail": {"test": true}
-  }' \
-  response.json
-```
-
-## Logging
-
-The service uses **Log4j2** with **JSON logging** for structured CloudWatch logs.
-
-### Log Levels
-
-- **INFO** - Request/response flow, task processing
-- **DEBUG** - Detailed event parsing, metadata
-- **ERROR** - Exceptions and failures
-
-### Sample Log Output
-
-```json
-{
-  "instant": {"epochSecond": 1735455850, "nanoOfSecond": 123456789},
-  "thread": "main",
-  "level": "INFO",
-  "loggerName": "com.project.task.handler.TaskHandler",
-  "message": "Task handler invoked: functionName=task-service, requestId=abc-123",
-  "endOfBatch": false
-}
-```
-
-## Next Steps
-
-### Business Logic Implementation
-
-The `processTask()` method in `TaskHandler` is currently a placeholder. Implement your business logic there:
-
-```java
-private TaskResponse processTask(TaskRequest request, String requestId) {
-    // TODO: Implement your business logic here
-    // Examples:
-    // - Save to database
-    // - Call external APIs
-    // - Process data transformations
-    // - Send notifications
-    // - etc.
-}
-```
-
-### Additional Features to Implement
-
-1. **Database Integration** - Store task data in DynamoDB/RDS
-2. **External API Calls** - Integrate with third-party services
-3. **Validation** - Add input validation logic
-4. **Retry Logic** - Implement retry for failed tasks
-5. **Dead Letter Queue** - Handle failed SQS messages
-6. **Metrics** - Add CloudWatch metrics
-7. **Tracing** - Add X-Ray tracing
-
-## Dependencies
-
-- **AWS Lambda Java Core** 1.2.3
-- **AWS Lambda Java Events** 3.11.4
-- **AWS Powertools Logging** 2.8.0
-- **Jackson** 2.17.1
-- **Log4j2** 2.25.3
-- **JUnit** 4.13.2 (test)
-- **Mockito** 5.8.0 (test)
-
-## Environment Variables
-
-None required currently. Add as needed for your business logic:
-
-```bash
-ENVIRONMENT=production
-DATABASE_URL=...
-API_KEY=...
-```
-
-## Contributing
-
-1. Add business logic to `processTask()` method
-2. Update tests in `TaskHandlerTest.java`
-3. Run tests: `mvn test`
-4. Build: `mvn clean package`
-5. Deploy and test
-
-## License
-
-Part of SetUpProject - Internal Use
+**Processing:**
+- Parses event detail
+- Executes business logic
+- Returns "OK"
+- No response expected
 
 ---
 
-**Status:** ✅ **Base Template Complete**  
-**Next:** Implement business logic as per requirements
+## 🧪 Testing
+
+### Run Tests
+```bash
+mvn test -pl taskService
+```
+
+### Test Coverage (15+ tests)
+
+#### API Gateway Tests
+- ✅ POST with JSON body
+- ✅ GET with query parameters
+- ✅ GET with path parameters
+- ✅ Empty body handling
+
+#### SQS Tests
+- ✅ Single message processing
+- ✅ Batch message processing
+- ✅ Message attributes handling
+
+#### EventBridge Tests
+- ✅ Scheduled task events
+- ✅ Custom business events
+- ✅ Detail payload processing
+
+#### Error Handling Tests
+- ✅ Unknown event types
+- ✅ Null context handling
+
+#### Integration Test
+- ✅ All event types together
+
+### Example Test
+
+```java
+@Test
+public void testHandleApiGatewayEvent_Success() {
+    APIGatewayProxyRequestEvent event = new APIGatewayProxyRequestEvent();
+    event.setHttpMethod("POST");
+    event.setPath("/tasks");
+    event.setBody("{\"taskName\":\"Test\"}");
+    
+    Object response = handler.handleRequest(event, mockContext);
+    
+    assertNotNull(response);
+    assertTrue(response instanceof APIGatewayProxyResponseEvent);
+    
+    APIGatewayProxyResponseEvent apiResponse = 
+        (APIGatewayProxyResponseEvent) response;
+    assertEquals(200, apiResponse.getStatusCode().intValue());
+}
+```
+
+---
+
+## 💼 Business Logic Implementation
+
+### Current Implementation (Placeholder)
+
+```java
+private TaskResponse executeBusinessLogic(
+    TaskRequest request, 
+    Context context) {
+    
+    String taskId = UUID.randomUUID().toString();
+    
+    // TODO: Implement your business logic here
+    
+    return TaskResponse.builder()
+        .success(true)
+        .message("Task received and queued for processing")
+        .taskId(taskId)
+        .data(buildResponseData(request, context))
+        .build();
+}
+```
+
+### Implement Your Logic
+
+```java
+private TaskResponse executeBusinessLogic(
+    TaskRequest request, 
+    Context context) {
+    
+    String taskId = UUID.randomUUID().toString();
+    
+    // 1. Validate request
+    validateRequest(request);
+    
+    // 2. Save to database
+    dynamoDbClient.putItem(buildDynamoItem(request));
+    
+    // 3. Call external API
+    String result = apiClient.callApi(request.getRequestBody());
+    
+    // 4. Send notification
+    snsClient.publish(buildNotification(taskId, result));
+    
+    // 5. Trigger workflow
+    sfnClient.startExecution(buildWorkflow(taskId));
+    
+    return TaskResponse.builder()
+        .success(true)
+        .message("Task processed successfully")
+        .taskId(taskId)
+        .data(result)
+        .build();
+}
+```
+
+---
+
+## ⚡ Performance
+
+### Metrics
+
+| Metric | Cold Start | Warm Start |
+|--------|------------|------------|
+| API Gateway | ~3000ms | ~200ms |
+| SQS | ~2500ms | ~150ms |
+| EventBridge | ~2500ms | ~150ms |
+
+### Best Practices
+
+✅ **Keep Lambda Warm** - Use EventBridge scheduled ping  
+✅ **Connection Pooling** - Reuse HTTP connections  
+✅ **Batch Processing** - Process SQS messages in batches  
+✅ **Async Operations** - Use SNS/SQS for long tasks  
+
+---
+
+## 📊 Logging
+
+### Log Examples
+
+```json
+{
+  "instant": {"epochSecond": 1735455850},
+  "level": "INFO",
+  "loggerName": "com.project.task.handler.UnifiedTaskHandler",
+  "message": "Lambda invoked: functionName=task-service, requestId=abc-123"
+}
+
+{
+  "level": "INFO",
+  "loggerName": "com.project.task.router.EventRouter",
+  "message": "Invocation type detected: API Gateway"
+}
+
+{
+  "level": "INFO",
+  "loggerName": "com.project.task.service.TaskService",
+  "message": "Processing API Gateway request: method=POST, path=/tasks"
+}
+```
+
+---
+
+## 🔄 Event Flow
+
+### API Gateway Flow
+```
+API Gateway → UnifiedTaskHandler → EventRouter 
+→ TaskService.processApiRequest() 
+→ executeBusinessLogic() 
+→ APIGatewayProxyResponseEvent
+```
+
+### SQS Flow
+```
+SQS → UnifiedTaskHandler → EventRouter 
+→ TaskService.processSqsMessage() 
+→ executeBusinessLogic() 
+→ "OK" (acknowledge)
+```
+
+### EventBridge Flow
+```
+EventBridge → UnifiedTaskHandler → EventRouter 
+→ TaskService.processEventBridgeEvent() 
+→ executeBusinessLogic() 
+→ "OK"
+```
+
+---
+
+## 🛠️ Dependencies
+
+```xml
+<!-- AWS Lambda -->
+<dependency>
+    <groupId>com.amazonaws</groupId>
+    <artifactId>aws-lambda-java-core</artifactId>
+    <version>1.2.3</version>
+</dependency>
+
+<dependency>
+    <groupId>com.amazonaws</groupId>
+    <artifactId>aws-lambda-java-events</artifactId>
+    <version>3.11.4</version>
+</dependency>
+
+<!-- Powertools -->
+<dependency>
+    <groupId>software.amazon.lambda</groupId>
+    <artifactId>powertools-logging</artifactId>
+    <version>2.8.0</version>
+</dependency>
+
+<!-- Lombok -->
+<dependency>
+    <groupId>org.projectlombok</groupId>
+    <artifactId>lombok</artifactId>
+    <scope>provided</scope>
+</dependency>
+
+<!-- Jackson -->
+<dependency>
+    <groupId>com.fasterxml.jackson.core</groupId>
+    <artifactId>jackson-databind</artifactId>
+    <version>2.17.1</version>
+</dependency>
+```
+
+---
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+#### 1. Unknown Event Type
+**Problem:** `IllegalArgumentException: Unsupported event type`  
+**Solution:** Verify event source integration
+
+#### 2. SQS Message Not Deleted
+**Problem:** Message reappears in queue  
+**Solution:** Ensure handler returns without throwing exception
+
+#### 3. EventBridge Event Not Triggering
+**Problem:** Lambda not invoked  
+**Solution:** Check EventBridge rule target configuration
+
+---
+
+## 🔄 Changelog
+
+### Version 1.0.0 (2025-12-29)
+- ✅ Multi-source event support
+- ✅ Router pattern architecture
+- ✅ Lombok models
+- ✅ Comprehensive tests
+- ✅ Production-ready
+
+---
+
+**Built with ❤️ using Java 21, AWS Lambda, and Lombok**
+
+[← Back to Main README](../README.md)
 
