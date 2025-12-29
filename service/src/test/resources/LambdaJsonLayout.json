@@ -1,0 +1,11 @@
+{
+  "timestamp": "$${ts:iso8601}",
+  "level": "$${level}",
+  "logger": "$${logger}",
+  "message": "$${message}",
+  "thread": "$${thread}",
+  "requestId": "$${mdc:requestId:-}",
+  "exception": "$${exception:onLine=\\n    }",
+  "source": "$${source:shortFilename}"
+}
+

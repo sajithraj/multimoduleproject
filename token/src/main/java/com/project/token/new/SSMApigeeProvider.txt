@@ -1,0 +1,181 @@
+package com.project.token.provider;
+
+import com.project.token.transformer.ApigeeBearerTransformer;
+import software.amazon.awssdk.core.SdkSystemSetting;
+import software.amazon.awssdk.http.urlconnection.UrlConnectionHttpClient;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
+import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueRequest;
+
+import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
+import software.amazon.awssdk.core.client.config.SdkAdvancedClientOption;
+
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+import java.util.Optional;
+
+/**
+ * Apigee Secrets Provider - Powertools v2 Implementation.
+ * <p>
+ * This is the migration of SSMApigeeProvider from Powertools v1 to v2.
+ * <p>
+ * Key differences from v1:
+ * - No longer extends BaseProvider (Powertools v2 removed it)
+ * - No built-in caching (caller should handle caching if needed)
+ * - Direct SecretsManager client usage
+ * - ApigeeBearerTransformer for token fetching
+ * <p>
+ * Usage:
+ * <pre>
+ * ApigeeSecretsProvider provider = ApigeeSecretsProvider.builder()
+ *     .build();
+ *
+ * String bearerToken = provider.getValue("external-api/token");
+ * </pre>
+ */
+public class SSMApigeeProvider {
+
+    // Add required env helper and the two required public constants
+    // These ensure we keep using the same old token endpoint and secret name via env vars
+    public static final String TOKEN_SECRET_NAME = getRequiredEnv("TOKEN_SECRET_NAME");
+
+    private final SecretsManagerClient client;
+    private final ApigeeBearerTransformer transformer;
+
+    private SSMApigeeProvider(Builder builder) {
+        this.client = builder.client != null ? builder.client : createDefaultClient();
+        // Use transformer from builder if provided (mirrors flexibility of old implementation)
+        this.transformer = builder.transformer != null ? builder.transformer : new ApigeeBearerTransformer();
+    }
+
+    /**
+     * Create builder for ApigeeSecretsProvider.
+     */
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    /**
+     * Get default instance with standard configuration.
+     */
+    public static SSMApigeeProvider get() {
+        return builder().build();
+    }
+
+    /**
+     * Get bearer token from Secrets Manager and transform via ApigeeBearerTransformer.
+     * <p>
+     * This method:
+     * 1. Fetches secret from Secrets Manager
+     * 2. Applies ApigeeBearerTransformer to get bearer token
+     * 3. Returns the bearer token
+     * <p>
+     * Note: Caching should be handled at a higher level if needed.
+     *
+     * @param secretKey The secret name in AWS Secrets Manager
+     * @return Bearer token (access_token)
+     */
+    public String getValue(String secretKey) {
+        // If caller didn't supply a secret name, fallback to env-configured TOKEN_SECRET_NAME
+        String key = (secretKey == null || secretKey.trim().isEmpty()) ? TOKEN_SECRET_NAME : secretKey;
+
+        // Fetch secret value from Secrets Manager
+        String secretValue = getSecretFromSecretsManager(key);
+
+        // Apply transformation to get bearer token
+        return transformer.applyTransformation(secretValue, String.class);
+    }
+
+    /**
+     * Reset to defaults - no-op for v2 (no internal cache).
+     * Kept for API compatibility with old SSMApigeeProvider.
+     */
+    public void resetToDefaults() {
+        // No-op - no internal state to reset
+    }
+
+    /**
+     * Fetch secret value from AWS Secrets Manager.
+     */
+    private String getSecretFromSecretsManager(String secretKey) {
+        GetSecretValueRequest request = GetSecretValueRequest.builder()
+                .secretId(secretKey)
+                .build();
+
+        return Optional.ofNullable(client.getSecretValue(request).secretString())
+                .orElseGet(() -> new String(
+                        Base64.getDecoder().decode(
+                                client.getSecretValue(request)
+                                        .secretBinary()
+                                        .asByteArray()
+                        ),
+                        StandardCharsets.UTF_8
+                ));
+    }
+
+    /**
+     * Create default SecretsManager client.
+     * Mirrors old SSMApigeeProvider.createClient().
+     */
+    private static SecretsManagerClient createDefaultClient() {
+        return SecretsManagerClient.builder()
+                .httpClientBuilder(UrlConnectionHttpClient.builder())
+                .region(Region.of(
+                        System.getenv().getOrDefault(
+                                SdkSystemSetting.AWS_REGION.environmentVariable(),
+                                "us-east-1"
+                        )))
+                .overrideConfiguration(ClientOverrideConfiguration.builder()
+                        .putAdvancedOption(
+                                SdkAdvancedClientOption.USER_AGENT_SUFFIX,
+                                "powertools-parameters")
+                        .build())
+                .build();
+    }
+
+    /**
+     * Builder for ApigeeSecretsProvider.
+     */
+    public static class Builder {
+        private SecretsManagerClient client;
+
+        // Allow injecting a custom transformer (optional)
+        private ApigeeBearerTransformer transformer;
+
+        private Builder() {
+        }
+
+        /**
+         * Set custom SecretsManager client.
+         */
+        public Builder withClient(SecretsManagerClient client) {
+            this.client = client;
+            return this;
+        }
+
+        /**
+         * Optionally provide a custom ApigeeBearerTransformer (useful for testing or custom behavior).
+         */
+        public Builder withTransformer(ApigeeBearerTransformer transformer) {
+            this.transformer = transformer;
+            return this;
+        }
+
+        /**
+         * Build the ApigeeSecretsProvider instance.
+         */
+        public SSMApigeeProvider build() {
+            return new SSMApigeeProvider(this);
+        }
+    }
+
+
+    // Helper to require env vars at startup (keeps behavior explicit and fails fast)
+    private static String getRequiredEnv(String name) {
+        String val = System.getenv(name);
+        if (val == null || val.trim().isEmpty()) {
+            throw new IllegalStateException("Required environment variable '" + name + "' is not set.");
+        }
+        return val;
+    }
+}

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration packages="software.amazon.lambda.powertools.logging">
+    <Appenders>
+        <Console name="ConsoleAppender" target="SYSTEM_OUT">
+            <LambdaJsonLayout/>
+        </Console>
+    </Appenders>
+    <Loggers>
+        <Root level="INFO">
+            <AppenderRef ref="ConsoleAppender"/>
+        </Root>
+        <Logger name="com.project" level="DEBUG" additivity="false">
+            <AppenderRef ref="ConsoleAppender"/>
+        </Logger>
+        <Logger name="software.amazon.awssdk" level="WARN" additivity="false"/>
+        <Logger name="org.apache.hc" level="WARN" additivity="false"/>
+        <Logger name="org.apache.httpcomponents" level="WARN" additivity="false"/>
+    </Loggers>
+</Configuration>
+

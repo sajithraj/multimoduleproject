@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN">
+    <Appenders>
+        <Console name="JsonConsole" target="SYSTEM_OUT">
+            <JsonLayout
+                    compact="true"
+                    eventEol="true"
+                    stacktraceAsString="true"/>
+        </Console>
+    </Appenders>
+
+    <Loggers>
+        <Root level="INFO">
+            <AppenderRef ref="JsonConsole"/>
+        </Root>
+
+        <!-- DEBUG level for task service -->
+        <Logger name="com.project.task" level="DEBUG" additivity="false">
+            <AppenderRef ref="JsonConsole"/>
+        </Logger>
+
+        <!-- WARN level for AWS SDK -->
+        <Logger name="software.amazon.awssdk" level="WARN" additivity="false">
+            <AppenderRef ref="JsonConsole"/>
+        </Logger>
+
+        <!-- WARN level for AWS Lambda -->
+        <Logger name="com.amazonaws.services.lambda" level="WARN" additivity="false">
+            <AppenderRef ref="JsonConsole"/>
+        </Logger>
+    </Loggers>
+</Configuration>
+

@@ -1,0 +1,31 @@
+services:
+  localstack:
+    image: localstack/localstack:latest
+    container_name: localstack-lambda-test
+    ports:
+      - "4566:4566"
+    environment:
+      - DEBUG=0
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - LAMBDA_EXECUTOR=docker
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - SERVICES=lambda,secretsmanager,logs,iam,apigateway
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "./init-aws.sh:/docker-entrypoint-initaws.d/init-aws.sh"
+    networks:
+      - lambda-network
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:4566/_localstack/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+
+networks:
+  lambda-network:
+    driver: bridge
+
