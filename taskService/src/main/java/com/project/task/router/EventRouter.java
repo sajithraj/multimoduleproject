@@ -5,6 +5,7 @@ import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
 import com.amazonaws.services.lambda.runtime.events.ScheduledEvent;
 import com.amazonaws.services.lambda.runtime.events.SQSEvent;
+import com.project.task.handler.EventBridgeHandler;
 import com.project.task.model.InvocationType;
 import com.project.task.service.TaskService;
 import com.project.task.util.InvocationTypeDetector;
@@ -13,11 +14,14 @@ import org.apache.logging.log4j.Logger;
 
 /**
  * Routes Lambda invocations to appropriate handlers based on event source type.
+ * Supports API Gateway (multiple endpoints), SQS, and EventBridge (scheduled + custom events).
  */
 public class EventRouter {
 
     private static final Logger log = LogManager.getLogger(EventRouter.class);
     private static final TaskService SERVICE = new TaskService();
+    private static final ApiGatewayRouter API_ROUTER = new ApiGatewayRouter(SERVICE);
+    private static final EventBridgeHandler EB_HANDLER = new EventBridgeHandler(SERVICE);
 
     /**
      * Route the event to the appropriate handler.
@@ -40,7 +44,8 @@ public class EventRouter {
     }
 
     /**
-     * Handle API Gateway events.
+     * Handle API Gateway events - routes to specific endpoint handlers.
+     * Supports multiple endpoints: /ping, /get, /id/{id}, /post
      */
     private APIGatewayProxyResponseEvent handleApiGateway(
             APIGatewayProxyRequestEvent event,
@@ -49,7 +54,7 @@ public class EventRouter {
         log.info("Handling API Gateway request: method={}, path={}",
                 event.getHttpMethod(), event.getPath());
 
-        return SERVICE.processApiRequest(event, context);
+        return API_ROUTER.route(event, context);
     }
 
     /**
@@ -71,16 +76,14 @@ public class EventRouter {
     }
 
     /**
-     * Handle EventBridge events.
+     * Handle EventBridge events - supports both scheduled tasks and custom events.
+     * Automatically detects event type and routes appropriately.
      */
     private String handleEventBridge(ScheduledEvent event, Context context) {
         log.info("Handling EventBridge event: source={}, detailType={}",
                 event.getSource(), event.getDetailType());
 
-        SERVICE.processEventBridgeEvent(event, context);
-
-        log.info("Successfully processed EventBridge event");
-        return "OK";
+        return EB_HANDLER.handle(event, context);
     }
 }
 
