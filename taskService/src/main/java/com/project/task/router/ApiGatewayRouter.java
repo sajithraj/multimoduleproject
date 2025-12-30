@@ -3,7 +3,7 @@ package com.project.task.router;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
-import com.project.task.service.TaskService;
+import com.project.task.service.ApiGatewayTaskService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -12,14 +12,14 @@ import java.util.Map;
 
 /**
  * Routes API Gateway requests to appropriate handlers based on path and method.
- * Supports multiple endpoints: /ping, /id/{id}, /get, /post
+ * Standardized endpoints: /ping, /task, /task/{id}
  */
 public class ApiGatewayRouter {
 
     private static final Logger log = LogManager.getLogger(ApiGatewayRouter.class);
-    private final TaskService taskService;
+    private final ApiGatewayTaskService taskService;
 
-    public ApiGatewayRouter(TaskService taskService) {
+    public ApiGatewayRouter(ApiGatewayTaskService taskService) {
         this.taskService = taskService;
     }
 
@@ -43,13 +43,11 @@ public class ApiGatewayRouter {
             // Route based on path and method
             return switch (path) {
                 case "/ping" -> handlePing(event, context);
-                case "/get" -> handleGet(event, context);
-                case "/post" -> handlePost(event, context);
-                case "/tasks" -> handleTasks(event, context);  // Generic task endpoint
+                case "/task" -> handleTaskCollection(event, context);  // GET all or POST new
                 default -> {
-                    // Handle dynamic paths like /id/{id}
-                    if (path.startsWith("/id/")) {
-                        yield handleGetById(event, context);
+                    // Handle dynamic paths like /task/{id}
+                    if (path.startsWith("/task/")) {
+                        yield handleTaskById(event, context);  // GET, PUT, or DELETE by ID
                     }
                     yield handleNotFound(path, method);
                 }
@@ -68,94 +66,69 @@ public class ApiGatewayRouter {
             APIGatewayProxyRequestEvent event,
             Context context) {
 
-        log.info("Handling /ping request");
+        log.info("Handling GET /ping request");
         return taskService.processPing(event, context);
     }
 
     /**
-     * Handle /get endpoint - Get all resources
+     * Handle /task endpoint - Collection operations
+     * GET: List all tasks
+     * POST: Create new task
      */
-    private APIGatewayProxyResponseEvent handleGet(
+    private APIGatewayProxyResponseEvent handleTaskCollection(
             APIGatewayProxyRequestEvent event,
             Context context) {
 
-        log.info("Handling GET /get request");
+        String method = event.getHttpMethod();
+        log.info("Handling {} /task request", method);
 
-        // Validate method
-        if (!"GET".equals(event.getHttpMethod())) {
-            return buildErrorResponse(405, "Method not allowed. Use GET.");
-        }
-
-        return taskService.processGetAll(event, context);
+        return switch (method) {
+            case "GET" -> taskService.processGetAllTasks(event, context);
+            case "POST" -> {
+                // Validate body for POST
+                if (event.getBody() == null || event.getBody().isEmpty()) {
+                    yield buildErrorResponse(400, "Request body is required");
+                }
+                yield taskService.processCreateTask(event, context);
+            }
+            default -> buildErrorResponse(405, "Method not allowed. Use GET or POST.");
+        };
     }
 
     /**
-     * Handle /id/{id} endpoint - Get resource by ID
+     * Handle /task/{id} endpoint - Individual task operations
+     * GET: Get task by ID
+     * PUT: Update task
+     * DELETE: Delete task
      */
-    private APIGatewayProxyResponseEvent handleGetById(
+    private APIGatewayProxyResponseEvent handleTaskById(
             APIGatewayProxyRequestEvent event,
             Context context) {
 
-        log.info("Handling GET /id/{{id}} request");
-
-        // Validate method
-        if (!"GET".equals(event.getHttpMethod())) {
-            return buildErrorResponse(405, "Method not allowed. Use GET.");
-        }
+        String method = event.getHttpMethod();
+        String path = event.getPath();
 
         // Extract ID from path
-        String path = event.getPath();
         String id = path.substring(path.lastIndexOf('/') + 1);
+        log.info("Handling {} /task/{{id}} request, id={}", method, id);
 
-        log.debug("Extracted ID: {}", id);
-
-        // Get from path parameters if available
+        // Override with path parameters if available
         Map<String, String> pathParams = event.getPathParameters();
         if (pathParams != null && pathParams.containsKey("id")) {
             id = pathParams.get("id");
         }
 
-        return taskService.processGetById(id, event, context);
-    }
-
-    /**
-     * Handle /post endpoint - Create new resource
-     */
-    private APIGatewayProxyResponseEvent handlePost(
-            APIGatewayProxyRequestEvent event,
-            Context context) {
-
-        log.info("Handling POST /post request");
-
-        // Validate method
-        if (!"POST".equals(event.getHttpMethod())) {
-            return buildErrorResponse(405, "Method not allowed. Use POST.");
-        }
-
-        // Validate body
-        if (event.getBody() == null || event.getBody().isEmpty()) {
-            return buildErrorResponse(400, "Request body is required");
-        }
-
-        return taskService.processPost(event, context);
-    }
-
-    /**
-     * Handle /tasks endpoint - Generic task operations
-     * Supports both GET (list tasks) and POST (create task)
-     */
-    private APIGatewayProxyResponseEvent handleTasks(
-            APIGatewayProxyRequestEvent event,
-            Context context) {
-
-        String method = event.getHttpMethod();
-        log.info("Handling {} /tasks request", method);
-
         return switch (method) {
-            case "GET" -> taskService.processGetAll(event, context);
-            case "POST" -> taskService.processApiRequest(event, context);
-            default -> buildErrorResponse(405,
-                    "Method not allowed. Use GET or POST.");
+            case "GET" -> taskService.processGetTaskById(event, context);
+            case "PUT" -> {
+                // Validate body for PUT
+                if (event.getBody() == null || event.getBody().isEmpty()) {
+                    yield buildErrorResponse(400, "Request body is required");
+                }
+                yield taskService.processUpdateTask(event, context);
+            }
+            case "DELETE" -> taskService.processDeleteTask(event, context);
+            default -> buildErrorResponse(405, "Method not allowed. Use GET, PUT, or DELETE.");
         };
     }
 
@@ -166,15 +139,16 @@ public class ApiGatewayRouter {
         log.warn("No route found for: {} {}", method, path);
 
         Map<String, Object> errorBody = new HashMap<>();
+        errorBody.put("service", "task-service");
         errorBody.put("error", "Not Found");
         errorBody.put("message", "No route found for " + method + " " + path);
         errorBody.put("availableRoutes", new String[]{
-                "GET /ping",
-                "GET /get",
-                "GET /id/{id}",
-                "POST /post",
-                "GET /tasks",
-                "POST /tasks"
+                "GET /ping - Health check",
+                "GET /task - Get all tasks",
+                "POST /task - Create new task",
+                "GET /task/{id} - Get task by ID",
+                "PUT /task/{id} - Update task",
+                "DELETE /task/{id} - Delete task"
         });
 
         return buildResponse(404, errorBody);
@@ -185,6 +159,7 @@ public class ApiGatewayRouter {
      */
     private APIGatewayProxyResponseEvent buildErrorResponse(int statusCode, String message) {
         Map<String, Object> errorBody = new HashMap<>();
+        errorBody.put("service", "task-service");
         errorBody.put("success", false);
         errorBody.put("error", message);
 

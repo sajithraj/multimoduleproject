@@ -32,6 +32,8 @@
         <jackson.version>2.17.1</jackson.version>
         <log4j.version>2.25.3</log4j.version>
         <lombok.version>1.18.30</lombok.version>
+        <mapstruct.version>1.6.3</mapstruct.version>
+        <validation.api.version>2.0.1.Final</validation.api.version>
         <junit.version>4.13.2</junit.version>
         <mockito.version>5.8.0</mockito.version>
 

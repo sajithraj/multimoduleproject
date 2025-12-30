@@ -1,8 +1,8 @@
 package com.project.task.util;
 
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
-import com.amazonaws.services.lambda.runtime.events.ScheduledEvent;
 import com.amazonaws.services.lambda.runtime.events.SQSEvent;
+import com.amazonaws.services.lambda.runtime.events.ScheduledEvent;
 import com.project.task.model.InvocationType;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;

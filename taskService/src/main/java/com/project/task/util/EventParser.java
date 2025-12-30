@@ -1,9 +1,8 @@
 package com.project.task.util;
 
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
-import com.amazonaws.services.lambda.runtime.events.ScheduledEvent;
 import com.amazonaws.services.lambda.runtime.events.SQSEvent;
-import com.fasterxml.jackson.core.JsonProcessingException;
+import com.amazonaws.services.lambda.runtime.events.ScheduledEvent;
 import com.project.task.model.EventSourceType;
 import com.project.task.model.TaskRequest;
 import org.apache.logging.log4j.LogManager;

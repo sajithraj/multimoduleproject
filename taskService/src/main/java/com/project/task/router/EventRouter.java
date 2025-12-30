@@ -1,21 +1,16 @@
 package com.project.task.router;
 
 import com.amazonaws.services.lambda.runtime.Context;
-import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
-import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
-import com.amazonaws.services.lambda.runtime.events.SQSBatchResponse;
-import com.amazonaws.services.lambda.runtime.events.SQSEvent;
-import com.amazonaws.services.lambda.runtime.events.ScheduledEvent;
+import com.amazonaws.services.lambda.runtime.events.*;
 import com.project.task.handler.EventBridgeHandler;
 import com.project.task.model.InvocationType;
-import com.project.task.service.TaskService;
+import com.project.task.service.ApiGatewayTaskService;
+import com.project.task.service.EventBridgeTaskService;
+import com.project.task.service.SQSTaskService;
 import com.project.task.util.EventDeserializer;
 import com.project.task.util.InvocationTypeDetector;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Routes Lambda invocations to appropriate handlers based on event source type.
@@ -24,9 +19,11 @@ import java.util.List;
 public class EventRouter {
 
     private static final Logger log = LogManager.getLogger(EventRouter.class);
-    private static final TaskService SERVICE = new TaskService();
-    private static final ApiGatewayRouter API_ROUTER = new ApiGatewayRouter(SERVICE);
-    private static final EventBridgeHandler EB_HANDLER = new EventBridgeHandler(SERVICE);
+    private static final ApiGatewayTaskService API_SERVICE = new ApiGatewayTaskService();
+    private static final SQSTaskService SQS_SERVICE = new SQSTaskService();
+    private static final EventBridgeTaskService EB_SERVICE = new EventBridgeTaskService();
+    private static final ApiGatewayRouter API_ROUTER = new ApiGatewayRouter(API_SERVICE);
+    private static final EventBridgeHandler EB_HANDLER = new EventBridgeHandler(EB_SERVICE);
 
     /**
      * Route the event to the appropriate handler.
@@ -51,7 +48,7 @@ public class EventRouter {
 
     /**
      * Handle API Gateway events - routes to specific endpoint handlers.
-     * Supports multiple endpoints: /ping, /get, /id/{id}, /post
+     * Supports multiple endpoints: /ping, /task, /task/{id}
      */
     private APIGatewayProxyResponseEvent handleApiGateway(Object input, Context context) {
         // Convert LinkedHashMap to typed AWS event
@@ -77,45 +74,17 @@ public class EventRouter {
                 ? (SQSEvent) input
                 : EventDeserializer.toSqsEvent(input);
 
+        // Safety check for null records
+        if (event.getRecords() == null) {
+            log.error("SQS Event has null Records. This should not happen.");
+            throw new IllegalArgumentException("Invalid SQS Event: Records field is null");
+        }
+
         int messageCount = event.getRecords().size();
         log.info("Handling SQS event with {} messages", messageCount);
 
-        List<SQSBatchResponse.BatchItemFailure> batchItemFailures = new ArrayList<>();
-
-        // Process each message and track failures
-        for (SQSEvent.SQSMessage message : event.getRecords()) {
-            String messageId = message.getMessageId();
-            log.debug("Processing SQS message: messageId={}", messageId);
-
-            try {
-                SERVICE.processSqsMessage(message, context);
-                log.debug("Successfully processed message: messageId={}", messageId);
-
-            } catch (Exception e) {
-                log.error("Failed to process SQS message: messageId={}, error={}",
-                        messageId, e.getMessage(), e);
-
-                // Add to batch item failures - will be retried or sent to DLQ
-                batchItemFailures.add(SQSBatchResponse.BatchItemFailure.builder()
-                        .withItemIdentifier(messageId)
-                        .build());
-            }
-        }
-
-        int successCount = messageCount - batchItemFailures.size();
-        int failureCount = batchItemFailures.size();
-
-        log.info("SQS batch processing complete: total={}, success={}, failures={}",
-                messageCount, successCount, failureCount);
-
-        if (!batchItemFailures.isEmpty()) {
-            log.warn("Returning {} failed message IDs to SQS for retry/DLQ", failureCount);
-        }
-
-        // Return batch response with failures (empty list if all succeeded)
-        return SQSBatchResponse.builder()
-                .withBatchItemFailures(batchItemFailures)
-                .build();
+        // Delegate to SQS service for batch processing
+        return SQS_SERVICE.processSQSMessages(event, context);
     }
 
     /**

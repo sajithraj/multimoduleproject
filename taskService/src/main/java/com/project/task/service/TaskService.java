@@ -3,8 +3,11 @@ package com.project.task.service;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
-import com.amazonaws.services.lambda.runtime.events.ScheduledEvent;
 import com.amazonaws.services.lambda.runtime.events.SQSEvent;
+import com.amazonaws.services.lambda.runtime.events.ScheduledEvent;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.project.task.model.Task;
 import com.project.task.model.TaskRequest;
 import com.project.task.model.TaskResponse;
 import com.project.task.util.EventParser;
@@ -12,17 +15,64 @@ import com.project.task.util.JsonUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Business service that processes tasks from different event sources.
- * This is where you implement your actual business logic.
+ * Production-ready features:
+ * - Thread-safe in-memory storage using ConcurrentHashMap
+ * - Atomic ID generation
+ * - Proper CRUD operations
+ * - Input validation
+ * - Error handling
  */
 public class TaskService {
 
     private static final Logger log = LogManager.getLogger(TaskService.class);
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
+    // Thread-safe in-memory storage
+    private static final Map<String, Task> TASK_STORE = new ConcurrentHashMap<>();
+    private static final AtomicLong ID_GENERATOR = new AtomicLong(1);
+
+    // Initialize with sample data
+    static {
+        initializeSampleData();
+    }
+
+    /**
+     * Initialize sample tasks for testing.
+     */
+    private static void initializeSampleData() {
+        Task task1 = Task.builder()
+                .id("task-1")
+                .name("Complete documentation")
+                .description("Write comprehensive API documentation")
+                .status(Task.TaskStatus.IN_PROGRESS)
+                .build();
+
+        Task task2 = Task.builder()
+                .id("task-2")
+                .name("Review code changes")
+                .description("Review pull request #123")
+                .status(Task.TaskStatus.TODO)
+                .build();
+
+        Task task3 = Task.builder()
+                .id("task-3")
+                .name("Deploy to production")
+                .description("Deploy v1.0.0 to production environment")
+                .status(Task.TaskStatus.COMPLETED)
+                .build();
+
+        TASK_STORE.put(task1.getId(), task1);
+        TASK_STORE.put(task2.getId(), task2);
+        TASK_STORE.put(task3.getId(), task3);
+
+        log.info("Initialized task store with {} sample tasks", TASK_STORE.size());
+    }
 
     /**
      * Process API Gateway request.
@@ -78,21 +128,294 @@ public class TaskService {
             APIGatewayProxyRequestEvent event,
             Context context) {
 
-        log.info("Processing /ping health check");
+        log.info("Processing GET /ping health check");
 
-        Map<String, Object> pingData = new HashMap<>();
-        pingData.put("status", "healthy");
-        pingData.put("service", "task-service");
-        pingData.put("timestamp", System.currentTimeMillis());
-        pingData.put("requestId", context.getAwsRequestId());
-        pingData.put("version", "1.0.0");
+        Map<String, Object> response = new HashMap<>();
+        response.put("service", "task-service");
+        response.put("requestId", getRequestId(context));
+        response.put("version", "1.0.0");
+        response.put("status", "healthy");
+        response.put("timestamp", System.currentTimeMillis());
+        response.put("message", "GET /ping successfully invoked");
 
-        return buildApiResponseWithData(200, pingData);
+        return buildApiResponseWithData(200, response);
     }
 
     /**
-     * Handle GET /get endpoint - Get all resources.
+     * Handle GET /task - Get all tasks.
      */
+    public APIGatewayProxyResponseEvent processGetAllTasks(
+            APIGatewayProxyRequestEvent event,
+            Context context) {
+
+        log.info("Processing GET /task - retrieve all tasks");
+
+        try {
+            // Get all tasks from store
+            List<Task> allTasks = new ArrayList<>(TASK_STORE.values());
+
+            log.info("Retrieved {} tasks from store", allTasks.size());
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("service", "task-service");
+            response.put("requestId", getRequestId(context));
+            response.put("version", "1.0.0");
+            response.put("status", "success");
+            response.put("timestamp", System.currentTimeMillis());
+            response.put("message", "GET /task successfully invoked");
+            response.put("data", allTasks);
+            response.put("count", allTasks.size());
+
+            return buildApiResponseWithData(200, response);
+
+        } catch (Exception e) {
+            log.error("Error retrieving tasks: {}", e.getMessage(), e);
+            return buildApiErrorResponse(500, "GET /task", "Failed to retrieve tasks: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Handle GET /task/{id} - Get task by ID.
+     */
+    public APIGatewayProxyResponseEvent processGetTaskById(
+            String id,
+            APIGatewayProxyRequestEvent event,
+            Context context) {
+
+        log.info("Processing GET /task/{{id}} - retrieve task by ID: {}", id);
+
+        try {
+            // Retrieve task from store
+            Task task = TASK_STORE.get(id);
+
+            if (task == null) {
+                log.warn("Task not found with ID: {}", id);
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("service", "task-service");
+                errorResponse.put("requestId", getRequestId(context));
+                errorResponse.put("version", "1.0.0");
+                errorResponse.put("status", "error");
+                errorResponse.put("timestamp", System.currentTimeMillis());
+                errorResponse.put("message", "GET /task/" + id + " - Task not found");
+                errorResponse.put("error", "Task with ID '" + id + "' does not exist");
+
+                return buildApiResponseWithData(404, errorResponse);
+            }
+
+            log.info("Found task: {}", task.getName());
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("service", "task-service");
+            response.put("requestId", getRequestId(context));
+            response.put("version", "1.0.0");
+            response.put("status", "success");
+            response.put("timestamp", System.currentTimeMillis());
+            response.put("message", "GET /task/" + id + " successfully invoked");
+            response.put("data", task);
+
+            return buildApiResponseWithData(200, response);
+
+        } catch (Exception e) {
+            log.error("Error retrieving task by ID: {}", e.getMessage(), e);
+            return buildApiErrorResponse(500, "GET /task/" + id, "Failed to retrieve task: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Handle POST /task - Create new task.
+     */
+    public APIGatewayProxyResponseEvent processCreateTask(
+            APIGatewayProxyRequestEvent event,
+            Context context) {
+
+        log.info("Processing POST /task - create new task");
+
+        try {
+            String requestBody = event.getBody();
+            log.debug("Request body: {}", requestBody);
+
+            // Parse request body to Task object
+            Map<String, Object> requestMap = OBJECT_MAPPER.readValue(requestBody, Map.class);
+
+            // Generate unique ID
+            String generatedId = "task-" + ID_GENERATOR.getAndIncrement();
+
+            // Build task from request - only essential fields
+            Task.TaskBuilder taskBuilder = Task.builder()
+                    .id(generatedId)
+                    .name((String) requestMap.get("name"));
+
+            // Optional fields
+            if (requestMap.containsKey("description")) {
+                taskBuilder.description((String) requestMap.get("description"));
+            }
+            if (requestMap.containsKey("status")) {
+                taskBuilder.status(Task.TaskStatus.valueOf(((String) requestMap.get("status")).toUpperCase()));
+            }
+
+            // Build and save task
+            Task newTask = taskBuilder.build();
+            TASK_STORE.put(newTask.getId(), newTask);
+
+            log.info("Created new task with ID: {}, name: {}", newTask.getId(), newTask.getName());
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("service", "task-service");
+            response.put("requestId", getRequestId(context));
+            response.put("version", "1.0.0");
+            response.put("status", "success");
+            response.put("timestamp", System.currentTimeMillis());
+            response.put("message", "POST /task successfully invoked");
+            response.put("data", newTask);
+
+            return buildApiResponseWithData(201, response);
+
+        } catch (IllegalArgumentException e) {
+            log.error("Validation error creating task: {}", e.getMessage(), e);
+            return buildApiErrorResponse(400, "POST /task", "Invalid input: " + e.getMessage());
+        } catch (JsonProcessingException e) {
+            log.error("JSON parsing error: {}", e.getMessage(), e);
+            return buildApiErrorResponse(400, "POST /task", "Invalid JSON format: " + e.getMessage());
+        } catch (Exception e) {
+            log.error("Error creating task: {}", e.getMessage(), e);
+            return buildApiErrorResponse(500, "POST /task", "Failed to create task: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Handle PUT /task/{id} - Update task.
+     */
+    public APIGatewayProxyResponseEvent processUpdateTask(
+            String id,
+            APIGatewayProxyRequestEvent event,
+            Context context) {
+
+        log.info("Processing PUT /task/{{id}} - update task: {}", id);
+
+        try {
+            // Check if task exists
+            Task existingTask = TASK_STORE.get(id);
+            if (existingTask == null) {
+                log.warn("Task not found with ID: {}", id);
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("service", "task-service");
+                errorResponse.put("requestId", getRequestId(context));
+                errorResponse.put("version", "1.0.0");
+                errorResponse.put("status", "error");
+                errorResponse.put("timestamp", System.currentTimeMillis());
+                errorResponse.put("message", "PUT /task/" + id + " - Task not found");
+                errorResponse.put("error", "Task with ID '" + id + "' does not exist");
+
+                return buildApiResponseWithData(404, errorResponse);
+            }
+
+            String requestBody = event.getBody();
+            log.debug("Update payload: {}", requestBody);
+
+            // Parse update request
+            Map<String, Object> updates = OBJECT_MAPPER.readValue(requestBody, Map.class);
+
+            // Apply updates - only essential fields
+            if (updates.containsKey("name")) {
+                existingTask.setName((String) updates.get("name"));
+            }
+            if (updates.containsKey("description")) {
+                existingTask.setDescription((String) updates.get("description"));
+            }
+            if (updates.containsKey("status")) {
+                existingTask.setStatus(Task.TaskStatus.valueOf(((String) updates.get("status")).toUpperCase()));
+            }
+
+            // Update timestamp
+            existingTask.setUpdatedAt(System.currentTimeMillis());
+
+            log.info("Updated task: {}", existingTask.getName());
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("service", "task-service");
+            response.put("requestId", getRequestId(context));
+            response.put("version", "1.0.0");
+            response.put("status", "success");
+            response.put("timestamp", System.currentTimeMillis());
+            response.put("message", "PUT /task/" + id + " successfully invoked");
+            response.put("data", existingTask);
+
+            return buildApiResponseWithData(200, response);
+
+        } catch (IllegalArgumentException e) {
+            log.error("Validation error updating task: {}", e.getMessage(), e);
+            return buildApiErrorResponse(400, "PUT /task/" + id, "Invalid input: " + e.getMessage());
+        } catch (JsonProcessingException e) {
+            log.error("JSON parsing error: {}", e.getMessage(), e);
+            return buildApiErrorResponse(400, "PUT /task/" + id, "Invalid JSON format: " + e.getMessage());
+        } catch (Exception e) {
+            log.error("Error updating task: {}", e.getMessage(), e);
+            return buildApiErrorResponse(500, "PUT /task/" + id, "Failed to update task: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Handle DELETE /task/{id} - Delete task.
+     */
+    public APIGatewayProxyResponseEvent processDeleteTask(
+            String id,
+            APIGatewayProxyRequestEvent event,
+            Context context) {
+
+        log.info("Processing DELETE /task/{{id}} - delete task: {}", id);
+
+        try {
+            // Check if task exists and remove it
+            Task deletedTask = TASK_STORE.remove(id);
+
+            if (deletedTask == null) {
+                log.warn("Task not found with ID: {}", id);
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("service", "task-service");
+                errorResponse.put("requestId", getRequestId(context));
+                errorResponse.put("version", "1.0.0");
+                errorResponse.put("status", "error");
+                errorResponse.put("timestamp", System.currentTimeMillis());
+                errorResponse.put("message", "DELETE /task/" + id + " - Task not found");
+                errorResponse.put("error", "Task with ID '" + id + "' does not exist");
+
+                return buildApiResponseWithData(404, errorResponse);
+            }
+
+            log.info("Deleted task: {} (ID: {})", deletedTask.getName(), id);
+
+            Map<String, Object> deletionInfo = new HashMap<>();
+            deletionInfo.put("id", id);
+            deletionInfo.put("name", deletedTask.getName());
+            deletionInfo.put("deletedAt", System.currentTimeMillis());
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("service", "task-service");
+            response.put("requestId", getRequestId(context));
+            response.put("version", "1.0.0");
+            response.put("status", "success");
+            response.put("timestamp", System.currentTimeMillis());
+            response.put("message", "DELETE /task/" + id + " successfully invoked");
+            response.put("data", deletionInfo);
+
+            return buildApiResponseWithData(200, response);
+
+        } catch (Exception e) {
+            log.error("Error deleting task: {}", e.getMessage(), e);
+            return buildApiErrorResponse(500, "DELETE /task/" + id, "Failed to delete task: " + e.getMessage());
+        }
+    }
+
+    // ========================================
+    // OLD METHODS - Keeping for backward compatibility
+    // ========================================
+
+    /**
+     * Handle GET /get endpoint - Get all resources.
+     *
+     * @deprecated Use processGetAllTasks() instead
+     */
+    @Deprecated
     public APIGatewayProxyResponseEvent processGetAll(
             APIGatewayProxyRequestEvent event,
             Context context) {
@@ -296,6 +619,13 @@ public class TaskService {
     // ========================================
 
     /**
+     * Safely get request ID from context (handles null context)
+     */
+    private String getRequestId(Context context) {
+        return context != null ? context.getAwsRequestId() : "unknown-request-id";
+    }
+
+    /**
      * Create sample resource (placeholder).
      */
     private Map<String, Object> createSampleResource(String id, String name) {
@@ -305,6 +635,34 @@ public class TaskService {
         resource.put("status", "active");
         resource.put("createdAt", System.currentTimeMillis());
         return resource;
+    }
+
+    /**
+     * Create sample task (placeholder).
+     */
+    private Map<String, Object> createSampleTask(String id, String title, String status) {
+        Map<String, Object> task = new HashMap<>();
+        task.put("id", id);
+        task.put("title", title);
+        task.put("status", status);
+        task.put("createdAt", System.currentTimeMillis());
+        task.put("updatedAt", System.currentTimeMillis());
+        return task;
+    }
+
+    /**
+     * Build standardized error response.
+     */
+    private APIGatewayProxyResponseEvent buildApiErrorResponse(int statusCode, String endpoint, String errorMessage) {
+        Map<String, Object> errorResponse = new HashMap<>();
+        errorResponse.put("service", "task-service");
+        errorResponse.put("version", "1.0.0");
+        errorResponse.put("status", "error");
+        errorResponse.put("timestamp", System.currentTimeMillis());
+        errorResponse.put("message", endpoint + " invocation failed");
+        errorResponse.put("error", errorMessage);
+
+        return buildApiResponseWithData(statusCode, errorResponse);
     }
 
     /**
@@ -400,7 +758,7 @@ public class TaskService {
 
         // Build response
         Map<String, Object> responseData = new HashMap<>();
-        responseData.put("requestId", context.getAwsRequestId());
+        responseData.put("requestId", getRequestId(context));
         responseData.put("sourceType", request.getSourceType().name());
         responseData.put("receivedAt", request.getTimestamp());
         responseData.put("processedAt", System.currentTimeMillis());

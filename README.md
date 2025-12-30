@@ -1,445 +1,762 @@
-# AWS Lambda Multi-Module Project
+# Task Service - AWS Lambda Multi-Event Handler
 
-A production-ready, multi-module Maven project for AWS Lambda functions with OAuth2 token management, external API integration, and multi-source task processing.
+**A production-grade AWS Lambda service that handles multiple event sources (API Gateway, SQS, EventBridge) with unified routing and processing.**
 
-[![Java](https://img.shields.io/badge/Java-21-orange.svg)](https://www.oracle.com/java/)
+[![Java](https://img.shields.io/badge/Java-21-orange.svg)](https://openjdk.java.net/)
 [![Maven](https://img.shields.io/badge/Maven-3.9+-blue.svg)](https://maven.apache.org/)
-[![AWS Lambda](https://img.shields.io/badge/AWS-Lambda-orange.svg)](https://aws.amazon.com/lambda/)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![LocalStack](https://img.shields.io/badge/LocalStack-3.0+-green.svg)](https://localstack.cloud/)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+---
 
 ## 📋 Table of Contents
 
 - [Overview](#overview)
 - [Architecture](#architecture)
-- [Modules](#modules)
+- [Features](#features)
+- [Project Structure](#project-structure)
 - [Prerequisites](#prerequisites)
 - [Quick Start](#quick-start)
-- [Building](#building)
-- [Deployment](#deployment)
+- [Development](#development)
 - [Testing](#testing)
-- [Documentation](#documentation)
-- [Project Structure](#project-structure)
-- [Tech Stack](#tech-stack)
+- [Deployment](#deployment)
+- [API Documentation](#api-documentation)
+- [Event Sources](#event-sources)
+- [Monitoring](#monitoring)
 - [Contributing](#contributing)
+- [Troubleshooting](#troubleshooting)
 
 ---
 
 ## 🎯 Overview
 
-This project implements a serverless architecture on AWS Lambda with three specialized modules:
+This project demonstrates a **unified Lambda handler** that processes events from multiple AWS sources:
 
-1. **Token Module** - OAuth2 token management with AWS Powertools v2 caching
-2. **Service Module** - External API integration with token-based authentication
-3. **TaskService Module** - Multi-source event processing (API Gateway, SQS, EventBridge)
+- **API Gateway** - REST API endpoints for CRUD operations
+- **SQS** - Asynchronous message queue processing with DLQ support
+- **EventBridge** - Scheduled tasks and custom business events
 
-### Key Features
+The service manages tasks with full CRUD operations, automatic event routing, and comprehensive error handling.
 
-✅ **AWS Powertools v2** - Advanced Lambda utilities with caching  
-✅ **OAuth2 Token Caching** - 55-minute TTL with automatic refresh  
-✅ **Multi-Module Architecture** - Clean separation of concerns  
-✅ **Lombok Integration** - Reduced boilerplate code  
-✅ **JSON Structured Logging** - Log4j2 with CloudWatch integration  
-✅ **SSL/TLS Support** - Custom certificate handling  
-✅ **Comprehensive Testing** - Unit and integration tests  
-✅ **Infrastructure as Code** - Terraform for deployment  
-✅ **LocalStack Compatible** - Local development and testing  
+### Key Highlights
+
+- ✅ **Unified Handler** - Single Lambda handles all event types
+- ✅ **Type-Safe Deserialization** - Efficient event parsing with Jackson MixIns
+- ✅ **DLQ Support** - Failed message handling with retry logic
+- ✅ **Production-Ready** - Proper logging, validation, error handling
+- ✅ **LocalStack Compatible** - Full local development environment
+- ✅ **Comprehensive Tests** - 31 tests covering all scenarios
+- ✅ **MapStruct Integration** - Type-safe DTO mapping
+- ✅ **Lombok** - Clean, concise code
 
 ---
 
 ## 🏗️ Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                         AWS Cloud                                │
-│                                                                   │
-│  ┌──────────────┐      ┌──────────────┐      ┌──────────────┐  │
-│  │ API Gateway  │      │     SQS      │      │ EventBridge  │  │
-│  └──────┬───────┘      └──────┬───────┘      └──────┬───────┘  │
-│         │                     │                     │            │
-│         └──────────┬──────────┴──────────┬──────────┘            │
-│                    │                     │                        │
-│         ┌──────────▼──────────┐ ┌───────▼───────────┐           │
-│         │  Service Lambda     │ │ TaskService       │           │
-│         │  (External API)     │ │ Lambda            │           │
-│         └──────────┬──────────┘ └───────────────────┘           │
-│                    │                                              │
-│         ┌──────────▼──────────┐                                  │
-│         │  Token Module       │                                  │
-│         │  (OAuth2 Caching)   │                                  │
-│         └──────────┬──────────┘                                  │
-│                    │                                              │
-│         ┌──────────▼──────────┐                                  │
-│         │  Secrets Manager    │                                  │
-│         │  (Credentials)      │                                  │
-│         └─────────────────────┘                                  │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                    AWS Lambda Function                       │
+│                   (task-service-dev)                         │
+│                                                               │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │          UnifiedTaskHandler                            │ │
+│  │  (Request Handler - Detects Event Type)               │ │
+│  └─────┬──────────────────┬────────────────┬─────────────┘ │
+│        │                  │                │               │
+│        ▼                  ▼                ▼               │
+│  ┌─────────┐      ┌──────────┐    ┌──────────────┐       │
+│  │ API GW  │      │   SQS    │    │ EventBridge  │       │
+│  │ Router  │      │ Router   │    │   Handler    │       │
+│  └────┬────┘      └─────┬────┘    └───────┬──────┘       │
+│       │                 │                  │               │
+│       ▼                 ▼                  ▼               │
+│  ┌─────────────────────────────────────────────────────┐  │
+│  │            Service Layer                            │  │
+│  │  - ApiGatewayTaskService                           │  │
+│  │  - SQSTaskService                                  │  │
+│  │  - EventBridgeTaskService                          │  │
+│  └─────────────────┬───────────────────────────────────┘  │
+│                    │                                       │
+│                    ▼                                       │
+│  ┌─────────────────────────────────────────────────────┐  │
+│  │            Data Layer (In-Memory Store)            │  │
+│  │  - TaskData (Thread-safe ConcurrentHashMap)        │  │
+│  └─────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+
+External Event Sources:
+┌──────────────┐    ┌──────────┐    ┌──────────────┐
+│ API Gateway  │    │   SQS    │    │ EventBridge  │
+│  (REST API)  │    │ (Queue)  │    │ (Scheduled)  │
+└──────┬───────┘    └─────┬────┘    └──────┬───────┘
+       │                  │                 │
+       └──────────────────┴─────────────────┘
+                          │
+                          ▼
+                   Lambda Function
 ```
 
----
+### Event Flow
 
-## 📦 Modules
-
-### 1. Token Module
-**Purpose:** OAuth2 token lifecycle management
-
-**Features:**
-- AWS Powertools v2 parameter store integration
-- Token caching with 55-minute TTL
-- Automatic token refresh
-- Secrets Manager integration
-- SSL certificate handling
-
-**Technology:** Java 21, AWS Powertools 2.8.0, Lombok
-
-[📖 Token Module Documentation](token/README.md)
+1. **API Gateway** → REST endpoints → CRUD operations on tasks
+2. **SQS** → Batch processing → Partial failure handling → DLQ routing
+3. **EventBridge** → Scheduled/Custom events → Task creation
 
 ---
 
-### 2. Service Module
-**Purpose:** External API integration with authenticated requests
+## ✨ Features
 
-**Features:**
-- Token-based authentication
-- HTTP client with connection pooling
-- SSL/TLS support
-- Error handling and retry logic
-- JSON structured logging
+### API Gateway Integration
+- ✅ GET /ping - Health check
+- ✅ GET /task - List all tasks
+- ✅ GET /task/{id} - Get task by ID
+- ✅ POST /task - Create new task
+- ✅ PUT /task/{id} - Update task
+- ✅ DELETE /task/{id} - Delete task
+- ✅ CORS enabled
+- ✅ Standard response format
 
-**Technology:** Java 21, Apache HttpClient 5, Log4j2
+### SQS Integration
+- ✅ Batch message processing (up to 10 messages)
+- ✅ Partial batch failure support (`ReportBatchItemFailures`)
+- ✅ Dead Letter Queue (DLQ) for failed messages
+- ✅ Automatic retry with max receive count
+- ✅ TaskRequestDTO validation
+- ✅ Efficient deserialization with Jackson MixIn
 
-[📖 Service Module Documentation](service/README.md)
+### EventBridge Integration
+- ✅ Scheduled events (cron/rate expressions)
+- ✅ Custom business events
+- ✅ Task creation from event detail
+- ✅ Flexible event routing
+
+### Technical Features
+- ✅ **Unified Event Routing** - Single handler for all event types
+- ✅ **Type-Safe DTOs** - MapStruct for object mapping
+- ✅ **Lombok** - Clean code with annotations
+- ✅ **Jackson Optimizations** - MixIn for performance
+- ✅ **Comprehensive Logging** - Log4j2 with structured logging
+- ✅ **Input Validation** - javax.validation annotations
+- ✅ **Error Handling** - Proper HTTP status codes
+- ✅ **Thread-Safe** - ConcurrentHashMap for data store
 
 ---
 
-### 3. TaskService Module
-**Purpose:** Multi-source event processing
+## 📁 Project Structure
 
-**Features:**
-- API Gateway request handling
-- SQS message processing
-- EventBridge event handling
-- Router pattern architecture
-- Lombok models with builder pattern
-
-**Technology:** Java 21, AWS Lambda Events, Lombok
-
-[📖 TaskService Module Documentation](taskService/README.md)
+```
+SetUpProject/
+├── pom.xml                          # Parent POM
+├── README.md                        # This file
+├── CONTRIBUTING.md                  # Contribution guidelines
+│
+├── taskService/                     # Main Lambda service
+│   ├── pom.xml
+│   ├── README.md                    # Module-specific documentation
+│   └── src/
+│       ├── main/java/com/project/task/
+│       │   ├── handler/            # Event handlers
+│       │   │   ├── UnifiedTaskHandler.java
+│       │   │   └── EventBridgeHandler.java
+│       │   ├── router/             # Event routers
+│       │   │   ├── EventRouter.java
+│       │   │   ├── ApiGatewayRouter.java
+│       │   │   └── SQSRouter.java
+│       │   ├── service/            # Business logic
+│       │   │   ├── ApiGatewayTaskService.java
+│       │   │   ├── SQSTaskService.java
+│       │   │   └── EventBridgeTaskService.java
+│       │   ├── model/              # Domain models
+│       │   │   └── Task.java
+│       │   ├── dto/                # Data transfer objects
+│       │   │   └── TaskRequestDTO.java
+│       │   ├── mapper/             # MapStruct mappers
+│       │   │   └── TaskMapper.java
+│       │   ├── data/               # Data layer
+│       │   │   └── TaskData.java
+│       │   └── util/               # Utilities
+│       │       └── EventDeserializer.java
+│       └── test/                   # Comprehensive test suite
+│
+├── service/                         # Base service module (shared)
+│   ├── pom.xml
+│   └── README.md
+│
+├── token/                           # Token/Auth module (future)
+│   ├── pom.xml
+│   └── README.md
+│
+├── infra/                          # Infrastructure as Code
+│   ├── terraform/
+│   │   ├── main.tf                 # Terraform configuration
+│   │   ├── terraform.tfvars        # AWS variables
+│   │   ├── terraform.localstack.tfvars
+│   │   └── scripts/               # Helper scripts
+│   └── docker/
+│       └── docker-compose.yml      # LocalStack setup
+│
+└── scripts/                        # Utility scripts
+    ├── test-api.ps1
+    ├── deploy-localstack.ps1
+    └── quick-deploy.ps1
+```
 
 ---
 
 ## 🔧 Prerequisites
 
 ### Required
-- **Java 21** or higher
-- **Maven 3.9+**
-- **AWS CLI** (for deployment)
-- **Git**
+- **Java 21+** - OpenJDK or Amazon Corretto
+- **Maven 3.9+** - Build tool
+- **Docker** - For LocalStack
+- **AWS CLI v2** - For AWS/LocalStack interaction
 
-### Optional (for local development)
-- **Docker** (for LocalStack)
-- **Terraform 1.0+** (for infrastructure)
-- **LocalStack** (for local AWS simulation)
+### Optional
+- **Terraform 1.5+** - For infrastructure deployment
+- **Postman** - For API testing
+- **IntelliJ IDEA** - Recommended IDE
 
-### AWS Permissions Required
-- Lambda function management
-- Secrets Manager access
-- CloudWatch Logs
-- IAM role management
+### Installation
+
+**Java:**
+```powershell
+# Download from: https://adoptium.net/
+java -version
+```
+
+**Maven:**
+```powershell
+# Download from: https://maven.apache.org/
+mvn -version
+```
+
+**Docker:**
+```powershell
+# Download from: https://www.docker.com/
+docker --version
+```
+
+**AWS CLI:**
+```powershell
+# Download from: https://aws.amazon.com/cli/
+aws --version
+```
 
 ---
 
 ## 🚀 Quick Start
 
-### 1. Clone Repository
-```bash
-git clone https://github.com/sajithraj/multimoduleproject.git
-cd multimoduleproject
-```
+### 1. Clone and Build
 
-### 2. Build All Modules
-```bash
-mvn clean package
-```
+```powershell
+# Clone repository
+git clone <repository-url>
+cd SetUpProject
 
-### 3. Deploy to LocalStack (Optional)
-```bash
-# Start LocalStack
-docker run -d -p 4566:4566 localstack/localstack
-
-# Deploy infrastructure
-cd infra/terraform
-terraform init
-terraform apply -var="use_localstack=true"
-```
-
-### 4. Deploy to AWS
-```bash
-cd infra/terraform
-terraform init
-terraform apply
-```
-
----
-
-## 🔨 Building
-
-### Build All Modules
-```bash
-mvn clean package
-```
-
-### Build Specific Module
-```bash
-mvn clean package -pl token
-mvn clean package -pl service
-mvn clean package -pl taskService
-```
-
-### Skip Tests
-```bash
-mvn clean package -DskipTests
-```
-
-### Build with Tests
-```bash
+# Build all modules
 mvn clean install
 ```
 
-### Build Artifacts
-- `token/target/token-1.0-SNAPSHOT.jar`
-- `service/target/service-1.0-SNAPSHOT.jar`
-- `taskService/target/taskService-1.0-SNAPSHOT.jar`
+### 2. Start LocalStack
+
+```powershell
+# Start LocalStack with Docker
+cd infra/docker
+docker-compose up -d
+
+# Verify LocalStack is running
+docker ps | Select-String localstack
+```
+
+### 3. Deploy to LocalStack
+
+```powershell
+# Deploy with Terraform
+cd infra/terraform
+terraform init
+terraform apply -var="use_localstack=true" -auto-approve
+
+# Get API Gateway URL
+$apiUrl = (Get-Content terraform.tfstate -Raw | ConvertFrom-Json).outputs.api_gateway_invoke_url.value
+Write-Host "API URL: $apiUrl"
+```
+
+### 4. Test the API
+
+```powershell
+# Health check
+Invoke-RestMethod -Uri "$apiUrl/ping" -Method GET
+
+# Get all tasks
+Invoke-RestMethod -Uri "$apiUrl/task" -Method GET | ConvertTo-Json
+
+# Create a task
+$body = @{
+    name = "My First Task"
+    description = "Testing the API"
+    status = "TODO"
+} | ConvertTo-Json
+
+Invoke-RestMethod -Uri "$apiUrl/task" -Method POST -Body $body -ContentType "application/json"
+```
 
 ---
 
-## 🚢 Deployment
+## 💻 Development
 
-### AWS Lambda Deployment
+### Build Commands
 
-#### Using Terraform (Recommended)
-```bash
-cd infra/terraform
+```powershell
+# Clean build
+mvn clean install
 
-# Initialize
-terraform init
+# Build without tests
+mvn clean package -DskipTests
 
-# Plan
-terraform plan
+# Build specific module
+mvn clean package -pl taskService -am
 
-# Apply
-terraform apply
+# Run tests
+mvn test
+
+# Run specific test
+mvn test -Dtest=ApiGatewayIntegrationTest
 ```
 
-#### Using AWS CLI
-```bash
-# Deploy service Lambda
-aws lambda update-function-code \
-  --function-name my-token-auth-lambda \
-  --zip-file fileb://service/target/service-1.0-SNAPSHOT.jar
+### Project Properties
 
-# Deploy taskService Lambda
-aws lambda update-function-code \
-  --function-name task-service \
-  --zip-file fileb://taskService/target/taskService-1.0-SNAPSHOT.jar
+Key dependencies and versions are defined in parent `pom.xml`:
+
+```xml
+<properties>
+    <java.version>21</java.version>
+    <maven.compiler.source>21</maven.compiler.source>
+    <maven.compiler.target>21</maven.compiler.target>
+    <lombok.version>1.18.30</lombok.version>
+    <mapstruct.version>1.6.3</mapstruct.version>
+    <jackson.version>2.17.1</jackson.version>
+</properties>
 ```
 
-### Environment Variables
+### Module Dependencies
 
-#### Service Lambda
-```bash
-TOKEN_ENDPOINT_URL=https://api.example.com/oauth/token
-TOKEN_SECRET_NAME=external-api/token
-EXTERNAL_API_URL=https://api.example.com/v1/resource
-OAUTH2_TIMEOUT_SECONDS=3
-POWERTOOLS_SERVICE_NAME=api-service
-POWERTOOLS_LOG_LEVEL=INFO
-```
-
-#### TaskService Lambda
-```bash
-POWERTOOLS_SERVICE_NAME=task-service
-POWERTOOLS_LOG_LEVEL=INFO
-POWERTOOLS_LOGGER_LOG_EVENT=true
-```
-
-[📖 Full Deployment Guide](infra/README.md)
+- **taskService** - Main Lambda function (depends on service)
+- **service** - Shared base module
+- **token** - Authentication module (future)
 
 ---
 
 ## 🧪 Testing
 
-### Run All Tests
-```bash
+### Test Coverage
+
+```
+Tests run: 31, Failures: 0, Errors: 0, Skipped: 0
+```
+
+### Test Categories
+
+**API Gateway Tests:**
+- Health check (GET /ping)
+- CRUD operations (GET, POST, PUT, DELETE)
+- Error handling (404, 400, 500)
+- Query parameters
+- Path parameters
+
+**SQS Tests:**
+- Single message processing
+- Batch processing (multiple messages)
+- Partial batch failures
+- DLQ routing
+- Large payloads
+- Invalid messages
+
+**EventBridge Tests:**
+- Scheduled events
+- Custom business events
+- System events
+
+### Running Tests
+
+```powershell
+# Run all tests
 mvn test
+
+# Run specific test class
+mvn test -Dtest=ApiGatewayIntegrationTest
+
+# Run tests with coverage
+mvn clean verify
+
+# Run integration tests only
+mvn verify -Pintegration-tests
 ```
 
-### Run Module Tests
-```bash
-mvn test -pl token
-mvn test -pl service
-mvn test -pl taskService
-```
+### Test with LocalStack
 
-### Integration Tests
-```bash
-# Start LocalStack
-docker run -d -p 4566:4566 localstack/localstack
+```powershell
+# Use helper script
+.\test-api.ps1
 
-# Run integration tests
-mvn verify
-```
+# Or test manually
+$apiUrl = "http://localhost:4566/restapis/{api-id}/dev/_user_request_"
 
-### Manual Testing
+# Test API Gateway
+Invoke-RestMethod -Uri "$apiUrl/ping"
 
-#### Test Service Lambda
-```bash
-aws lambda invoke \
-  --function-name my-token-auth-lambda \
-  --payload '{}' \
-  response.json
+# Test SQS (send message to queue)
+aws sqs send-message --queue-url http://localhost:4566/000000000000/task-queue --message-body '{"name":"Test","status":"TODO"}' --endpoint-url http://localhost:4566 --region us-east-1
 
-cat response.json
-```
-
-#### Test TaskService Lambda
-```bash
-# API Gateway event
-aws lambda invoke \
-  --function-name task-service \
-  --payload '{
-    "httpMethod": "POST",
-    "path": "/tasks",
-    "body": "{\"taskName\":\"Test\"}"
-  }' \
-  response.json
+# Test EventBridge (invoke Lambda directly)
+$event = '{"id":"test-123","source":"aws.events","detail-type":"Scheduled Event","time":"2025-12-30T10:00:00Z","detail":{}}'
+aws lambda invoke --function-name task-service-dev --payload $event --endpoint-url http://localhost:4566 --region us-east-1 response.json
 ```
 
 ---
 
-## 📚 Documentation
+## 🚢 Deployment
 
-### Module Documentation
-- [Token Module](token/README.md) - OAuth2 token management
-- [Service Module](service/README.md) - External API integration
-- [TaskService Module](taskService/README.md) - Multi-source processing
+### LocalStack (Development)
 
-### Infrastructure
-- [Terraform Infrastructure](infra/README.md) - IaC deployment guide
-
-### Guides
-- [Quick Start Guide](#quick-start) - Get started quickly
-- [Deployment Guide](infra/README.md#deployment) - AWS deployment
-- [Testing Guide](#testing) - Run tests locally
-
----
-
-## 📂 Project Structure
-
+**Using Terraform:**
+```powershell
+cd infra/terraform
+terraform apply -var="use_localstack=true" -auto-approve
 ```
-multimoduleproject/
-├── pom.xml                          # Parent POM
-├── README.md                        # This file
-├── .gitignore                       # Git exclusions
-│
-├── token/                           # OAuth2 Token Module
-│   ├── pom.xml
-│   ├── README.md
-│   └── src/
-│       ├── main/java/
-│       │   └── com/project/token/
-│       │       ├── provider/
-│       │       └── transformer/
-│       └── test/java/
-│
-├── service/                         # External API Service Module
-│   ├── pom.xml
-│   ├── README.md
-│   └── src/
-│       ├── main/java/
-│       │   └── com/project/service/
-│       │       ├── client/
-│       │       ├── config/
-│       │       ├── exception/
-│       │       └── util/
-│       └── test/java/
-│
-├── taskService/                     # Multi-Source Task Service
-│   ├── pom.xml
-│   ├── README.md
-│   └── src/
-│       ├── main/java/
-│       │   └── com/project/task/
-│       │       ├── handler/
-│       │       ├── router/
-│       │       ├── service/
-│       │       ├── model/
-│       │       └── util/
-│       └── test/java/
-│
-└── infra/                           # Infrastructure as Code
-    ├── README.md
-    └── terraform/
-        ├── main.tf
-        ├── variables.tf
-        ├── outputs.tf
-        └── *.ps1 (deployment scripts)
+
+**Using Script:**
+```powershell
+.\deploy-localstack.ps1
+```
+
+### AWS (Production)
+
+**1. Update Terraform Variables:**
+```hcl
+# infra/terraform/terraform.tfvars
+use_localstack = false
+aws_region = "us-east-1"
+environment = "prod"
+```
+
+**2. Deploy:**
+```powershell
+cd infra/terraform
+terraform init
+terraform plan
+terraform apply
+```
+
+**3. Verify:**
+```powershell
+aws lambda list-functions --region us-east-1
+aws apigateway get-rest-apis --region us-east-1
 ```
 
 ---
 
-## 🛠️ Tech Stack
+## 📚 API Documentation
 
-### Core Technologies
-- **Java 21** - Programming language
-- **Maven** - Build and dependency management
-- **AWS Lambda** - Serverless compute
-- **Lombok** - Boilerplate reduction
+### Base URL
+```
+LocalStack: http://localhost:4566/restapis/{api-id}/dev/_user_request_
+AWS: https://{api-id}.execute-api.{region}.amazonaws.com/dev
+```
 
-### AWS Services
-- **AWS Lambda** - Function execution
-- **AWS Secrets Manager** - Credential storage
-- **AWS Powertools** - Lambda utilities
-- **CloudWatch Logs** - Logging and monitoring
-- **API Gateway** - HTTP endpoints
-- **SQS** - Message queuing
-- **EventBridge** - Event routing
+### Endpoints
 
-### Libraries & Frameworks
-- **AWS Powertools Java 2.8.0** - Lambda utilities
-- **Apache HttpClient 5** - HTTP communication
-- **Jackson 2.17.1** - JSON processing
-- **Log4j2 2.25.3** - Structured logging
-- **JUnit 4** - Unit testing
-- **Mockito 5** - Mocking framework
+#### 1. Health Check
+```http
+GET /ping
+```
 
-### Development Tools
-- **Terraform** - Infrastructure as code
-- **LocalStack** - Local AWS simulation
-- **Docker** - Containerization
-- **Git** - Version control
+**Response:**
+```json
+{
+  "service": "task-service",
+  "requestId": "uuid",
+  "version": "1.0.0",
+  "status": "healthy",
+  "timestamp": 1735555200000,
+  "message": "GET /ping successfully invoked"
+}
+```
+
+#### 2. Get All Tasks
+```http
+GET /task
+```
+
+**Response:**
+```json
+{
+  "service": "task-service",
+  "status": "success",
+  "data": [
+    {
+      "id": "task-1",
+      "name": "Sample Task",
+      "description": "Task description",
+      "status": "TODO",
+      "createdAt": 1735555200000,
+      "updatedAt": 1735555200000
+    }
+  ],
+  "count": 1
+}
+```
+
+#### 3. Get Task by ID
+```http
+GET /task/{id}
+```
+
+**Response (200):**
+```json
+{
+  "service": "task-service",
+  "status": "success",
+  "data": {
+    "id": "task-1",
+    "name": "Sample Task",
+    "status": "TODO"
+  }
+}
+```
+
+**Response (404):**
+```json
+{
+  "service": "task-service",
+  "status": "error",
+  "error": "Task not found with id: task-1"
+}
+```
+
+#### 4. Create Task
+```http
+POST /task
+Content-Type: application/json
+
+{
+  "name": "New Task",
+  "description": "Task description",
+  "status": "TODO"
+}
+```
+
+**Response (201):**
+```json
+{
+  "service": "task-service",
+  "status": "success",
+  "data": {
+    "id": "generated-uuid",
+    "name": "New Task",
+    "status": "TODO",
+    "createdAt": 1735555200000,
+    "updatedAt": 1735555200000
+  }
+}
+```
+
+#### 5. Update Task
+```http
+PUT /task/{id}
+Content-Type: application/json
+
+{
+  "name": "Updated Task",
+  "status": "COMPLETED"
+}
+```
+
+#### 6. Delete Task
+```http
+DELETE /task/{id}
+```
+
+**Response (200):**
+```json
+{
+  "service": "task-service",
+  "status": "success",
+  "data": {
+    "id": "task-1",
+    "deleted": true
+  }
+}
+```
+
+For complete API documentation with examples, see [taskService/README.md](taskService/README.md)
 
 ---
 
-## 👥 Contributing
+## 📨 Event Sources
 
-### Development Workflow
+### API Gateway
+
+REST API with 6 endpoints for full CRUD operations on tasks.
+
+**Example:**
+```powershell
+$apiUrl = "YOUR_API_URL"
+Invoke-RestMethod -Uri "$apiUrl/task" -Method GET
+```
+
+### SQS
+
+Asynchronous message processing with batch support and DLQ.
+
+**Message Format:**
+```json
+{
+  "name": "Task from SQS",
+  "description": "Description",
+  "status": "TODO"
+}
+```
+
+**Send Message:**
+```powershell
+aws sqs send-message \
+  --queue-url http://localhost:4566/000000000000/task-queue \
+  --message-body '{"name":"SQS Task","status":"TODO"}' \
+  --endpoint-url http://localhost:4566
+```
+
+### EventBridge
+
+**Scheduled Events:**
+```json
+{
+  "id": "scheduled-123",
+  "source": "aws.events",
+  "detail-type": "Scheduled Event",
+  "detail": {}
+}
+```
+Creates task with name: `"scheduled event scheduled-123"`
+
+**Custom Events:**
+```json
+{
+  "source": "com.project.orders",
+  "detail-type": "OrderCompleted",
+  "detail": {
+    "name": "Process Order",
+    "description": "Order processing",
+    "status": "TODO"
+  }
+}
+```
+Creates task from detail fields.
+
+---
+
+## 📊 Monitoring
+
+### View Lambda Logs
+
+```powershell
+# LocalStack
+aws logs tail /aws/lambda/task-service-dev \
+  --follow \
+  --endpoint-url http://localhost:4566
+
+# AWS
+aws logs tail /aws/lambda/task-service-prod --follow
+```
+
+### Check SQS Queue Status
+
+```powershell
+# Main queue
+aws sqs get-queue-attributes \
+  --queue-url http://localhost:4566/000000000000/task-queue \
+  --attribute-names ApproximateNumberOfMessages \
+  --endpoint-url http://localhost:4566
+
+# DLQ
+aws sqs get-queue-attributes \
+  --queue-url http://localhost:4566/000000000000/task-queue-dlq \
+  --attribute-names ApproximateNumberOfMessages \
+  --endpoint-url http://localhost:4566
+```
+
+### Health Check
+
+```powershell
+# API Gateway health
+$apiUrl = "YOUR_API_URL"
+Invoke-RestMethod -Uri "$apiUrl/ping"
+```
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+### Quick Contribution Guide
+
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+3. Make your changes
+4. Write/update tests
+5. Ensure all tests pass (`mvn test`)
+6. Commit your changes (`git commit -m 'Add amazing feature'`)
+7. Push to the branch (`git push origin feature/amazing-feature`)
+8. Open a Pull Request
 
-### Code Style
-- Follow Java naming conventions
-- Use Lombok for boilerplate reduction
-- Write unit tests for new features
-- Document public APIs with Javadoc
-- Use meaningful commit messages
+---
 
-### Testing Requirements
-- Unit tests for business logic
-- Integration tests for AWS interactions
-- Minimum 80% code coverage
+## 🐛 Troubleshooting
+
+### Common Issues
+
+#### Issue: LocalStack not starting
+```powershell
+# Check Docker
+docker ps
+
+# Restart LocalStack
+cd infra/docker
+docker-compose down
+docker-compose up -d
+```
+
+#### Issue: Lambda not found
+```powershell
+# Check Lambda exists
+aws lambda list-functions --endpoint-url http://localhost:4566
+
+# Redeploy
+cd infra/terraform
+terraform apply -var="use_localstack=true" -auto-approve
+```
+
+#### Issue: SQS messages not processing
+```powershell
+# Check event source mapping
+aws lambda list-event-source-mappings \
+  --function-name task-service-dev \
+  --endpoint-url http://localhost:4566
+
+# Recreate mapping
+cd infra/terraform
+.\setup-dlq.ps1
+```
+
+#### Issue: API Gateway 403 errors
+```powershell
+# Get correct API URL
+cd infra/terraform
+$apiUrl = (Get-Content terraform.tfstate -Raw | ConvertFrom-Json).outputs.api_gateway_invoke_url.value
+Write-Host $apiUrl
+```
+
+For more troubleshooting, check module-specific READMEs.
 
 ---
 
@@ -449,34 +766,24 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-## 🤝 Support
+## 📞 Support
 
-For issues, questions, or contributions:
-- **Issues:** [GitHub Issues](https://github.com/sajithraj/multimoduleproject/issues)
-- **Discussions:** [GitHub Discussions](https://github.com/sajithraj/multimoduleproject/discussions)
-
----
-
-## 📝 Changelog
-
-### Version 1.0.0 (2025-12-29)
-- ✅ Initial release with 3 modules
-- ✅ OAuth2 token caching with Powertools v2
-- ✅ Multi-source task processing
-- ✅ Terraform infrastructure
-- ✅ Comprehensive documentation
+- **Issues:** [GitHub Issues](https://github.com/your-repo/issues)
+- **Documentation:** See module READMEs for detailed documentation
+- **Examples:** Check `taskService/README.md` for complete examples
 
 ---
 
-## 🙏 Acknowledgments
+## 🎯 Next Steps
 
-- AWS Powertools Java team
-- AWS Lambda documentation
-- Open source community
+1. ✅ Complete API Gateway, SQS, and EventBridge integration
+2. ⏳ Add DynamoDB for persistent storage
+3. ⏳ Implement authentication with token module
+4. ⏳ Add CloudWatch metrics and alarms
+5. ⏳ Create CI/CD pipeline
+6. ⏳ Add API documentation with OpenAPI/Swagger
 
 ---
 
-**Built with ❤️ using Java 21, AWS Lambda, and AWS Powertools**
-
-*Last Updated: December 29, 2025*
+**Built with ❤️ using Java, AWS Lambda, and LocalStack**
 

@@ -3,7 +3,7 @@ package com.project.task.handler;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.events.ScheduledEvent;
 import com.project.task.model.EventBridgeEventType;
-import com.project.task.service.TaskService;
+import com.project.task.service.EventBridgeTaskService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -16,9 +16,9 @@ import java.util.Map;
 public class EventBridgeHandler {
 
     private static final Logger log = LogManager.getLogger(EventBridgeHandler.class);
-    private final TaskService taskService;
+    private final EventBridgeTaskService taskService;
 
-    public EventBridgeHandler(TaskService taskService) {
+    public EventBridgeHandler(EventBridgeTaskService taskService) {
         this.taskService = taskService;
     }
 
@@ -83,49 +83,33 @@ public class EventBridgeHandler {
 
     /**
      * Handle scheduled tasks (cron/rate expressions).
-     * Examples: Daily reports, cleanup jobs, periodic tasks
+     * Creates task with name: "scheduled event " + event.id
      */
     private String handleScheduledTask(ScheduledEvent event, Context context) {
-        log.info("Processing scheduled task");
+        log.info("Processing scheduled task: id={}", event.getId());
 
-        // Extract schedule information from detail
-        Map<String, Object> detail = event.getDetail();
-
-        log.debug("Scheduled task detail: {}", detail);
-
-        // Process scheduled task
-        taskService.processScheduledTask(event, context);
+        // Process scheduled task - creates task in TASK_STORE
+        String result = taskService.processScheduledTask(event, context);
 
         log.info("Scheduled task completed successfully");
-        return "OK";
+        return result;
     }
 
     /**
      * Handle custom business events.
-     * Examples: OrderCreated, PaymentProcessed, UserRegistered
+     * Extracts TaskRequestDTO from detail and persists it
      */
     private String handleCustomEvent(ScheduledEvent event, Context context) {
         log.info("Processing custom business event: detailType={}", event.getDetailType());
 
-        String detailType = event.getDetailType();
         Map<String, Object> detail = event.getDetail();
-
         log.debug("Custom event detail: {}", detail);
 
-        // Route based on detail type
-        if (detailType.contains("Order")) {
-            taskService.processOrderEvent(event, context);
-        } else if (detailType.contains("Payment")) {
-            taskService.processPaymentEvent(event, context);
-        } else if (detailType.contains("User")) {
-            taskService.processUserEvent(event, context);
-        } else {
-            // Generic custom event handler
-            taskService.processCustomEvent(event, context);
-        }
+        // Process custom event - persists task from detail
+        String result = taskService.processCustomEvent(event, context);
 
         log.info("Custom event processed successfully");
-        return "OK";
+        return result;
     }
 
     /**

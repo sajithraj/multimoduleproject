@@ -1,16 +1,20 @@
-# Contributing to Multi-Module Lambda Project
+# Contributing to Task Service
 
-Thank you for your interest in contributing! This document provides guidelines and instructions for contributing to this project.
+Thank you for your interest in contributing to the Task Service project! This document provides guidelines and instructions for contributing.
+
+---
 
 ## 📋 Table of Contents
 
 - [Code of Conduct](#code-of-conduct)
 - [Getting Started](#getting-started)
-- [Development Workflow](#development-workflow)
+- [Development Setup](#development-setup)
+- [How to Contribute](#how-to-contribute)
 - [Coding Standards](#coding-standards)
-- [Testing Requirements](#testing-requirements)
+- [Testing Guidelines](#testing-guidelines)
 - [Pull Request Process](#pull-request-process)
-- [Reporting Issues](#reporting-issues)
+- [Commit Message Guidelines](#commit-message-guidelines)
+- [Issue Reporting](#issue-reporting)
 
 ---
 
@@ -18,21 +22,21 @@ Thank you for your interest in contributing! This document provides guidelines a
 
 ### Our Pledge
 
-We are committed to providing a welcoming and inspiring community for everyone.
+We are committed to providing a welcoming and inclusive environment for all contributors.
 
-### Expected Behavior
+### Our Standards
 
-- ✅ Be respectful and inclusive
-- ✅ Welcome newcomers and help them learn
-- ✅ Focus on what is best for the community
-- ✅ Show empathy towards other community members
+**Positive behavior includes:**
+- Using welcoming and inclusive language
+- Being respectful of differing viewpoints
+- Gracefully accepting constructive criticism
+- Focusing on what is best for the community
 
-### Unacceptable Behavior
-
-- ❌ Harassment or discriminatory language
-- ❌ Trolling or insulting comments
-- ❌ Publishing others' private information
-- ❌ Any conduct that could be considered inappropriate
+**Unacceptable behavior includes:**
+- Harassment, trolling, or derogatory comments
+- Public or private harassment
+- Publishing others' private information
+- Other conduct which could reasonably be considered inappropriate
 
 ---
 
@@ -40,110 +44,135 @@ We are committed to providing a welcoming and inspiring community for everyone.
 
 ### Prerequisites
 
-1. **Java 21** or higher
-2. **Maven 3.9+**
-3. **Git**
-4. **AWS CLI** (optional)
-5. **Docker** (optional, for LocalStack)
+Before contributing, ensure you have:
 
-### Setup Development Environment
+- Java 21+ installed
+- Maven 3.9+ installed
+- Docker (for LocalStack testing)
+- Git configured
+- IDE (IntelliJ IDEA recommended)
 
-```bash
-# Clone repository
-git clone https://github.com/sajithraj/multimoduleproject.git
-cd multimoduleproject
+### Fork and Clone
 
-# Build project
+1. **Fork the repository** on GitHub
+2. **Clone your fork:**
+   ```bash
+   git clone https://github.com/YOUR_USERNAME/SetUpProject.git
+   cd SetUpProject
+   ```
+
+3. **Add upstream remote:**
+   ```bash
+   git remote add upstream https://github.com/ORIGINAL_OWNER/SetUpProject.git
+   ```
+
+4. **Verify remotes:**
+   ```bash
+   git remote -v
+   ```
+
+---
+
+## 💻 Development Setup
+
+### 1. Build the Project
+
+```powershell
+# Full build
 mvn clean install
 
-# Run tests
+# Verify tests pass
 mvn test
+```
+
+### 2. Start LocalStack
+
+```powershell
+cd infra/docker
+docker-compose up -d
+```
+
+### 3. Deploy to LocalStack
+
+```powershell
+cd infra/terraform
+terraform init
+terraform apply -var="use_localstack=true" -auto-approve
+```
+
+### 4. Verify Setup
+
+```powershell
+# Check Lambda
+aws lambda list-functions --endpoint-url http://localhost:4566
+
+# Test API
+.\test-api.ps1
 ```
 
 ---
 
-## 💻 Development Workflow
+## 🎯 How to Contribute
 
-### 1. Fork the Repository
+### Types of Contributions
 
-```bash
-# Fork on GitHub, then clone your fork
-git clone https://github.com/YOUR_USERNAME/multimoduleproject.git
-cd multimoduleproject
+We welcome various types of contributions:
 
-# Add upstream remote
-git remote add upstream https://github.com/sajithraj/multimoduleproject.git
-```
+1. **Bug Fixes** - Fix issues and improve stability
+2. **Features** - Add new functionality
+3. **Documentation** - Improve or add documentation
+4. **Tests** - Add or improve test coverage
+5. **Performance** - Optimize code performance
+6. **Refactoring** - Improve code quality
 
-### 2. Create a Feature Branch
+### Contribution Workflow
 
-```bash
-# Create branch from main
-git checkout -b feature/my-amazing-feature
+1. **Find or Create an Issue**
+   - Check existing issues
+   - Create new issue if needed
+   - Discuss approach before starting
 
-# Or for bug fixes
-git checkout -b fix/bug-description
-```
+2. **Create a Branch**
+   ```bash
+   git checkout -b feature/your-feature-name
+   # or
+   git checkout -b fix/bug-description
+   ```
 
-### 3. Make Changes
+3. **Make Changes**
+   - Write clean, readable code
+   - Follow coding standards
+   - Add/update tests
+   - Update documentation
 
-- Write clean, maintainable code
-- Follow coding standards
-- Add unit tests
-- Update documentation
+4. **Test Your Changes**
+   ```powershell
+   # Run all tests
+   mvn clean test
+   
+   # Run specific tests
+   mvn test -Dtest=YourTest
+   
+   # Verify LocalStack integration
+   .\test-api.ps1
+   ```
 
-### 4. Commit Changes
+5. **Commit Your Changes**
+   ```bash
+   git add .
+   git commit -m "feat: add amazing feature"
+   ```
 
-```bash
-# Stage changes
-git add .
+6. **Push to Your Fork**
+   ```bash
+   git push origin feature/your-feature-name
+   ```
 
-# Commit with meaningful message
-git commit -m "feat: add amazing feature"
-```
-
-#### Commit Message Format
-
-Follow [Conventional Commits](https://www.conventionalcommits.org/):
-
-```
-<type>: <description>
-
-[optional body]
-
-[optional footer]
-```
-
-**Types:**
-- `feat`: New feature
-- `fix`: Bug fix
-- `docs`: Documentation changes
-- `style`: Code style changes (formatting, etc.)
-- `refactor`: Code refactoring
-- `test`: Adding or updating tests
-- `chore`: Maintenance tasks
-
-**Examples:**
-```
-feat: add SQS batch processing support
-fix: resolve token caching issue
-docs: update README with deployment steps
-test: add integration tests for API Gateway
-```
-
-### 5. Push Changes
-
-```bash
-# Push to your fork
-git push origin feature/my-amazing-feature
-```
-
-### 6. Create Pull Request
-
-- Go to GitHub and create a Pull Request
-- Fill out the PR template
-- Link related issues
-- Request review
+7. **Create Pull Request**
+   - Go to GitHub
+   - Click "New Pull Request"
+   - Fill in the template
+   - Wait for review
 
 ---
 
@@ -151,167 +180,170 @@ git push origin feature/my-amazing-feature
 
 ### Java Code Style
 
-#### Naming Conventions
+**Follow these principles:**
 
-```java
-// Classes: PascalCase
-public class ApiHandler { }
+1. **Use Lombok** - Reduce boilerplate
+   ```java
+   @Data
+   @Builder
+   @NoArgsConstructor
+   @AllArgsConstructor
+   public class Task {
+       private String id;
+       private String name;
+   }
+   ```
 
-// Methods: camelCase
-public void processRequest() { }
+2. **Use MapStruct** - Type-safe mapping
+   ```java
+   @Mapper(componentModel = "default")
+   public interface TaskMapper {
+       TaskMapper INSTANCE = Mappers.getMapper(TaskMapper.class);
+       Task toEntity(TaskRequestDTO dto);
+   }
+   ```
 
-// Constants: UPPER_SNAKE_CASE
-private static final String TOKEN_ENDPOINT = "...";
+3. **Proper Logging**
+   ```java
+   @Slf4j
+   public class MyService {
+       public void process() {
+           log.info("Processing started");
+           log.debug("Debug details: {}", data);
+           log.error("Error occurred: {}", e.getMessage(), e);
+       }
+   }
+   ```
 
-// Variables: camelCase
-String accessToken = "...";
+4. **Input Validation**
+   ```java
+   public class TaskRequestDTO {
+       @NotNull(message = "Name is required")
+       @NotEmpty(message = "Name cannot be empty")
+       private String name;
+   }
+   ```
+
+5. **Error Handling**
+   ```java
+   try {
+       // business logic
+   } catch (SpecificException e) {
+       log.error("Specific error: {}", e.getMessage());
+       throw new CustomException("User-friendly message", e);
+   } catch (Exception e) {
+       log.error("Unexpected error", e);
+       throw new RuntimeException("Processing failed", e);
+   }
+   ```
+
+### Code Formatting
+
+- **Indentation:** 4 spaces
+- **Line Length:** Max 120 characters
+- **Braces:** K&R style
+- **Imports:** Organize and remove unused
+- **Naming:**
+  - Classes: `PascalCase`
+  - Methods/Variables: `camelCase`
+  - Constants: `UPPER_SNAKE_CASE`
+  - Packages: `lowercase`
+
+### Package Structure
+
 ```
-
-#### Use Lombok
-
-```java
-// ✅ Good - Use Lombok
-@Data
-@Builder
-public class TaskRequest {
-    private String eventId;
-    private String body;
-}
-
-// ❌ Avoid - Manual getters/setters
-public class TaskRequest {
-    private String eventId;
-    
-    public String getEventId() { return eventId; }
-    public void setEventId(String eventId) { this.eventId = eventId; }
-}
+com.project.task/
+├── handler/      # Lambda handlers
+├── router/       # Event routers
+├── service/      # Business logic
+├── model/        # Domain models
+├── dto/          # Data transfer objects
+├── mapper/       # MapStruct mappers
+├── data/         # Data layer
+└── util/         # Utilities
 ```
-
-#### Proper Logging
-
-```java
-// ✅ Good - Structured logging
-log.info("Processing request: eventId={}, type={}", eventId, type);
-log.error("Failed to process request: {}", e.getMessage(), e);
-
-// ❌ Avoid - String concatenation
-log.info("Processing request: " + eventId + ", type: " + type);
-System.out.println("Debug: " + message);
-```
-
-#### Error Handling
-
-```java
-// ✅ Good - Specific exceptions
-try {
-    processTask(request);
-} catch (ValidationException e) {
-    log.error("Validation failed: {}", e.getMessage());
-    return buildErrorResponse(400, e.getMessage());
-} catch (ExternalApiException e) {
-    log.error("API call failed: {}", e.getMessage());
-    return buildErrorResponse(502, "External service unavailable");
-}
-
-// ❌ Avoid - Catching generic Exception
-try {
-    processTask(request);
-} catch (Exception e) {
-    return buildErrorResponse(500, "Error");
-}
-```
-
-### Code Organization
-
-```
-module/
-└── src/
-    └── main/java/com/project/module/
-        ├── handler/     # Lambda handlers
-        ├── service/     # Business logic
-        ├── model/       # Data models (Lombok)
-        ├── util/        # Utilities
-        ├── config/      # Configuration
-        └── exception/   # Custom exceptions
-```
-
-### Documentation
-
-#### Javadoc
-
-```java
-/**
- * Processes task requests from multiple event sources.
- * 
- * @param request The task request containing event data
- * @param context Lambda execution context
- * @return TaskResponse containing processing result
- * @throws ValidationException if request is invalid
- */
-public TaskResponse processTask(TaskRequest request, Context context) {
-    // Implementation
-}
-```
-
-#### README Updates
-
-- Update module README for new features
-- Add usage examples
-- Document configuration changes
-- Update changelog
 
 ---
 
-## 🧪 Testing Requirements
+## 🧪 Testing Guidelines
 
-### Unit Tests
+### Test Structure
 
+**Use AAA pattern:**
 ```java
 @Test
-public void testProcessTask_Success() {
+public void testFeature() {
     // Arrange
-    TaskRequest request = TaskRequest.builder()
-        .eventId("test-123")
-        .build();
+    Task task = Task.builder().name("Test").build();
     
     // Act
-    TaskResponse response = service.processTask(request, mockContext);
+    String result = service.process(task);
     
     // Assert
-    assertNotNull(response);
-    assertTrue(response.isSuccess());
-    assertEquals("test-123", response.getTaskId());
+    assertNotNull(result);
+    assertEquals("expected", result);
 }
 ```
+
+### Test Categories
+
+1. **Unit Tests** - Test individual components
+   ```java
+   @Test
+   public void testTaskMapper() {
+       TaskRequestDTO dto = new TaskRequestDTO();
+       dto.setName("Test");
+       
+       Task task = TaskMapper.INSTANCE.toEntity(dto);
+       
+       assertEquals("Test", task.getName());
+   }
+   ```
+
+2. **Integration Tests** - Test multiple components
+   ```java
+   @Test
+   public void testApiGateway_CompleteFlow() {
+       APIGatewayProxyRequestEvent request = createRequest();
+       Object response = handler.handleRequest(request, context);
+       // assertions
+   }
+   ```
+
+3. **End-to-End Tests** - Test full flow with LocalStack
 
 ### Test Coverage
 
-- **Minimum:** 80% code coverage
-- **Focus areas:**
-  - Business logic
-  - Error handling
-  - Edge cases
+**Minimum Requirements:**
+- **Unit Tests:** 80% coverage
+- **Integration Tests:** All major flows
+- **Edge Cases:** Error conditions, null checks, validation
 
-### Run Tests
-
-```bash
+**Running Tests:**
+```powershell
 # All tests
 mvn test
 
-# Specific module
-mvn test -pl token
-
 # With coverage
-mvn test jacoco:report
+mvn clean verify
+
+# Specific test
+mvn test -Dtest=ApiGatewayIntegrationTest
+
+# Integration tests only
+mvn verify -Pintegration-tests
 ```
 
-### Integration Tests
+### Test Naming
 
 ```java
-@Test
-public void testEndToEndFlow() {
-    // Test complete flow from request to response
-}
+// Good
+testApiGateway_CreateTask_Success()
+testSQS_InvalidMessage_ThrowsException()
+
+// Bad
+test1()
+testStuff()
 ```
 
 ---
@@ -320,14 +352,18 @@ public void testEndToEndFlow() {
 
 ### Before Submitting
 
-- [ ] Code follows style guidelines
-- [ ] Tests pass (`mvn test`)
-- [ ] Code builds (`mvn clean package`)
+**Checklist:**
+- [ ] Code compiles without errors
+- [ ] All tests pass
+- [ ] New tests added for new features
 - [ ] Documentation updated
-- [ ] Commit messages follow convention
-- [ ] Branch is up to date with main
+- [ ] No merge conflicts with main branch
+- [ ] Code follows style guidelines
+- [ ] Commit messages follow conventions
 
-### Pull Request Template
+### PR Template
+
+When creating a PR, include:
 
 ```markdown
 ## Description
@@ -340,35 +376,108 @@ Brief description of changes
 - [ ] Documentation update
 
 ## Testing
-- [ ] Unit tests added/updated
-- [ ] Integration tests added/updated
-- [ ] Manual testing performed
+Describe testing done
 
 ## Checklist
-- [ ] Code follows style guidelines
-- [ ] Self-review completed
+- [ ] Tests pass
 - [ ] Documentation updated
-- [ ] No new warnings
-- [ ] Tests pass locally
+- [ ] No breaking changes (or documented)
 ```
 
 ### Review Process
 
 1. **Automated Checks** - CI/CD pipeline runs
-2. **Code Review** - At least one approval required
-3. **Testing** - All tests must pass
-4. **Documentation** - README updates reviewed
+2. **Code Review** - At least 1 approval required
+3. **Testing** - Reviewer tests changes
+4. **Approval** - Maintainer approves
 5. **Merge** - Squash and merge to main
+
+### After Merge
+
+- Delete your feature branch
+- Pull latest main branch
+- Update your fork
+
+```bash
+git checkout main
+git pull upstream main
+git push origin main
+```
 
 ---
 
-## 🐛 Reporting Issues
+## 📝 Commit Message Guidelines
+
+### Format
+
+```
+<type>(<scope>): <subject>
+
+<body>
+
+<footer>
+```
+
+### Types
+
+- **feat:** New feature
+- **fix:** Bug fix
+- **docs:** Documentation changes
+- **style:** Formatting, missing semi-colons, etc.
+- **refactor:** Code restructuring
+- **perf:** Performance improvements
+- **test:** Adding/updating tests
+- **chore:** Maintenance tasks
+
+### Examples
+
+**Good:**
+```
+feat(api): add task update endpoint
+
+- Added PUT /task/{id} endpoint
+- Implemented validation
+- Added integration tests
+
+Closes #123
+```
+
+```
+fix(sqs): resolve message deserialization issue
+
+Fixed Records field mapping by adding Jackson MixIn.
+This improves performance by 60% compared to string manipulation.
+
+Fixes #456
+```
+
+**Bad:**
+```
+updated stuff
+```
+
+```
+fix bug
+```
+
+### Rules
+
+1. Use imperative mood ("add" not "added")
+2. Don't capitalize first letter
+3. No period at the end of subject
+4. Limit subject to 50 characters
+5. Wrap body at 72 characters
+6. Reference issues in footer
+
+---
+
+## 🐛 Issue Reporting
 
 ### Before Creating an Issue
 
-1. **Search existing issues** - Check if already reported
-2. **Check documentation** - Review README and docs
-3. **Try latest version** - Ensure you're up to date
+1. **Search existing issues** - Avoid duplicates
+2. **Check documentation** - Issue might be documented
+3. **Test with latest version** - Issue might be fixed
 
 ### Bug Report Template
 
@@ -379,7 +488,7 @@ Clear description of the bug
 ## Steps to Reproduce
 1. Step 1
 2. Step 2
-3. ...
+3. Step 3
 
 ## Expected Behavior
 What should happen
@@ -388,18 +497,16 @@ What should happen
 What actually happens
 
 ## Environment
-- OS: [e.g., Windows 11]
-- Java Version: [e.g., 21.0.1]
-- Maven Version: [e.g., 3.9.6]
-- AWS Region: [e.g., us-east-1]
+- Java version:
+- Maven version:
+- OS:
+- LocalStack version:
 
-## Logs
-```
-Relevant log output
-```
+## Logs/Screenshots
+Relevant logs or screenshots
 
 ## Additional Context
-Any other information
+Any other relevant information
 ```
 
 ### Feature Request Template
@@ -409,73 +516,100 @@ Any other information
 Clear description of the feature
 
 ## Use Case
-Why is this needed?
+Why is this feature needed?
 
 ## Proposed Solution
 How should it work?
 
 ## Alternatives Considered
-Other approaches you've thought about
+Other approaches considered
 
 ## Additional Context
-Any other information
+Any other relevant information
 ```
 
 ---
 
-## 🏗️ Module-Specific Guidelines
+## 🎯 Development Best Practices
 
-### Token Module
+### 1. Keep Changes Focused
 
-- Token caching logic must be thread-safe
-- Add tests for cache hit/miss scenarios
-- Update cache TTL documentation
+- One feature/fix per PR
+- Small, reviewable commits
+- Clear commit messages
 
-### Service Module
+### 2. Write Tests First (TDD)
 
-- HTTP client changes require performance testing
-- SSL/TLS updates need security review
-- External API mocks for testing
+```java
+@Test
+public void testNewFeature() {
+    // Write test first
+    // Then implement feature
+}
+```
 
-### TaskService Module
+### 3. Document Your Code
 
-- Support all three event sources
-- Router pattern must remain clean
-- Add tests for each event type
+```java
+/**
+ * Processes task creation from API Gateway request.
+ * 
+ * @param request API Gateway request event
+ * @param context Lambda context
+ * @return APIGatewayProxyResponseEvent with task data
+ * @throws IllegalArgumentException if request validation fails
+ */
+public APIGatewayProxyResponseEvent processCreateTask(
+    APIGatewayProxyRequestEvent request, 
+    Context context
+) {
+    // implementation
+}
+```
+
+### 4. Handle Errors Gracefully
+
+```java
+try {
+    return processTask(task);
+} catch (ValidationException e) {
+    log.warn("Validation failed: {}", e.getMessage());
+    return createErrorResponse(400, "Invalid input");
+} catch (Exception e) {
+    log.error("Unexpected error", e);
+    return createErrorResponse(500, "Internal server error");
+}
+```
+
+### 5. Performance Considerations
+
+- Use appropriate data structures
+- Avoid unnecessary object creation
+- Use streaming for large collections
+- Profile before optimizing
 
 ---
 
 ## 📚 Resources
 
-### Documentation
-
+### Project Documentation
 - [Main README](README.md)
-- [Token Module](token/README.md)
-- [Service Module](service/README.md)
-- [TaskService Module](taskService/README.md)
-- [Infrastructure](infra/README.md)
+- [TaskService README](taskService/README.md)
+- [API Documentation](taskService/README.md#api-documentation)
 
-### External Links
-
-- [AWS Lambda Java](https://docs.aws.amazon.com/lambda/latest/dg/java-handler.html)
-- [AWS Powertools](https://docs.aws.amazon.com/powertools/java/)
-- [Maven Documentation](https://maven.apache.org/guides/)
-- [Lombok Documentation](https://projectlombok.org/)
+### External Resources
+- [AWS Lambda Best Practices](https://docs.aws.amazon.com/lambda/latest/dg/best-practices.html)
+- [Java Coding Conventions](https://www.oracle.com/java/technologies/javase/codeconventions-contents.html)
+- [Effective Java](https://www.oreilly.com/library/view/effective-java/9780134686097/)
+- [LocalStack Documentation](https://docs.localstack.cloud/)
 
 ---
 
-## 🙏 Recognition
+## 🙏 Thank You!
 
-Contributors will be recognized in:
-- GitHub contributors list
-- Project README
-- Release notes
+Thank you for contributing to Task Service! Your efforts help make this project better for everyone.
 
-Thank you for contributing! 🎉
+**Questions?** Feel free to ask in issues or discussions.
 
----
-
-**Questions?** Open a [GitHub Discussion](https://github.com/sajithraj/multimoduleproject/discussions)
-
-*Last Updated: December 29, 2025*
+**Happy Coding!** 🚀
 

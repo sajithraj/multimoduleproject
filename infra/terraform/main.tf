@@ -253,9 +253,9 @@ resource "aws_lambda_function" "task_service_lambda" {
 
   environment {
     variables = {
-      ENVIRONMENT              = var.environment
-      POWERTOOLS_SERVICE_NAME  = "task-service"
-      POWERTOOLS_LOG_LEVEL     = "INFO"
+      ENVIRONMENT                 = var.environment
+      POWERTOOLS_SERVICE_NAME     = "task-service"
+      POWERTOOLS_LOG_LEVEL        = "INFO"
       POWERTOOLS_LOGGER_LOG_EVENT = "true"
     }
   }
@@ -271,9 +271,9 @@ resource "aws_sqs_queue" "task_queue" {
   name                       = "task-queue-${var.environment}"
   delay_seconds              = 0
   max_message_size           = 262144
-  message_retention_seconds  = 345600  # 4 days
+  message_retention_seconds  = 345600 # 4 days
   receive_wait_time_seconds  = 0
-  visibility_timeout_seconds = 90      # 3x Lambda timeout
+  visibility_timeout_seconds = 90 # 3x Lambda timeout
 
   # Dead Letter Queue configuration
   redrive_policy = jsonencode({
@@ -285,7 +285,7 @@ resource "aws_sqs_queue" "task_queue" {
 # Dead Letter Queue for failed messages
 resource "aws_sqs_queue" "task_dlq" {
   name                      = "task-queue-dlq-${var.environment}"
-  message_retention_seconds = 1209600  # 14 days
+  message_retention_seconds = 1209600 # 14 days
 }
 
 # Lambda permission for SQS to invoke
@@ -337,7 +337,7 @@ resource "aws_lambda_permission" "allow_eventbridge_invoke" {
 # Lambda Function URL for HTTP/REST testing (like API Gateway)
 resource "aws_lambda_function_url" "task_service_url" {
   function_name      = aws_lambda_function.task_service_lambda.function_name
-  authorization_type = "NONE"  # For testing only - use AWS_IAM in production
+  authorization_type = "NONE" # For testing only - use AWS_IAM in production
 
   cors {
     allow_credentials = true
@@ -346,6 +346,380 @@ resource "aws_lambda_function_url" "task_service_url" {
     allow_headers     = ["*"]
     max_age           = 86400
   }
+}
+
+# ========================================
+# API Gateway Integration for TaskService
+# ========================================
+
+# API Gateway REST API
+resource "aws_api_gateway_rest_api" "task_service_api" {
+  name        = "task-service-api-${var.environment}"
+  description = "API Gateway for TaskService Lambda with multiple endpoints"
+
+  endpoint_configuration {
+    types = ["REGIONAL"]
+  }
+}
+
+# API Gateway Resource - /ping
+resource "aws_api_gateway_resource" "ping" {
+  rest_api_id = aws_api_gateway_rest_api.task_service_api.id
+  parent_id   = aws_api_gateway_rest_api.task_service_api.root_resource_id
+  path_part   = "ping"
+}
+
+# API Gateway Method - GET /ping
+resource "aws_api_gateway_method" "ping_get" {
+  rest_api_id   = aws_api_gateway_rest_api.task_service_api.id
+  resource_id   = aws_api_gateway_resource.ping.id
+  http_method   = "GET"
+  authorization = "NONE"
+}
+
+# API Gateway Integration - GET /ping
+resource "aws_api_gateway_integration" "ping_get" {
+  rest_api_id             = aws_api_gateway_rest_api.task_service_api.id
+  resource_id             = aws_api_gateway_resource.ping.id
+  http_method             = aws_api_gateway_method.ping_get.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.task_service_lambda.invoke_arn
+}
+
+# ========================================
+# /task Resource (Collection Operations)
+# ========================================
+
+# API Gateway Resource - /task
+resource "aws_api_gateway_resource" "task" {
+  rest_api_id = aws_api_gateway_rest_api.task_service_api.id
+  parent_id   = aws_api_gateway_rest_api.task_service_api.root_resource_id
+  path_part   = "task"
+}
+
+# API Gateway Method - GET /task (Get all tasks)
+resource "aws_api_gateway_method" "task_get" {
+  rest_api_id   = aws_api_gateway_rest_api.task_service_api.id
+  resource_id   = aws_api_gateway_resource.task.id
+  http_method   = "GET"
+  authorization = "NONE"
+}
+
+# API Gateway Integration - GET /task
+resource "aws_api_gateway_integration" "task_get" {
+  rest_api_id             = aws_api_gateway_rest_api.task_service_api.id
+  resource_id             = aws_api_gateway_resource.task.id
+  http_method             = aws_api_gateway_method.task_get.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.task_service_lambda.invoke_arn
+}
+
+# API Gateway Method - POST /task (Create task)
+resource "aws_api_gateway_method" "task_post" {
+  rest_api_id   = aws_api_gateway_rest_api.task_service_api.id
+  resource_id   = aws_api_gateway_resource.task.id
+  http_method   = "POST"
+  authorization = "NONE"
+}
+
+# API Gateway Integration - POST /task
+resource "aws_api_gateway_integration" "task_post" {
+  rest_api_id             = aws_api_gateway_rest_api.task_service_api.id
+  resource_id             = aws_api_gateway_resource.task.id
+  http_method             = aws_api_gateway_method.task_post.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.task_service_lambda.invoke_arn
+}
+
+# ========================================
+# /task/{id} Resource (Individual Operations)
+# ========================================
+
+# API Gateway Resource - /task/{id}
+resource "aws_api_gateway_resource" "task_id" {
+  rest_api_id = aws_api_gateway_rest_api.task_service_api.id
+  parent_id   = aws_api_gateway_resource.task.id
+  path_part   = "{id}"
+}
+
+# API Gateway Method - GET /task/{id}
+resource "aws_api_gateway_method" "task_id_get" {
+  rest_api_id   = aws_api_gateway_rest_api.task_service_api.id
+  resource_id   = aws_api_gateway_resource.task_id.id
+  http_method   = "GET"
+  authorization = "NONE"
+
+  request_parameters = {
+    "method.request.path.id" = true
+  }
+}
+
+# API Gateway Integration - GET /task/{id}
+resource "aws_api_gateway_integration" "task_id_get" {
+  rest_api_id             = aws_api_gateway_rest_api.task_service_api.id
+  resource_id             = aws_api_gateway_resource.task_id.id
+  http_method             = aws_api_gateway_method.task_id_get.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.task_service_lambda.invoke_arn
+}
+
+# API Gateway Method - PUT /task/{id}
+resource "aws_api_gateway_method" "task_id_put" {
+  rest_api_id   = aws_api_gateway_rest_api.task_service_api.id
+  resource_id   = aws_api_gateway_resource.task_id.id
+  http_method   = "PUT"
+  authorization = "NONE"
+
+  request_parameters = {
+    "method.request.path.id" = true
+  }
+}
+
+# API Gateway Integration - PUT /task/{id}
+resource "aws_api_gateway_integration" "task_id_put" {
+  rest_api_id             = aws_api_gateway_rest_api.task_service_api.id
+  resource_id             = aws_api_gateway_resource.task_id.id
+  http_method             = aws_api_gateway_method.task_id_put.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.task_service_lambda.invoke_arn
+}
+
+# API Gateway Method - DELETE /task/{id}
+resource "aws_api_gateway_method" "task_id_delete" {
+  rest_api_id   = aws_api_gateway_rest_api.task_service_api.id
+  resource_id   = aws_api_gateway_resource.task_id.id
+  http_method   = "DELETE"
+  authorization = "NONE"
+
+  request_parameters = {
+    "method.request.path.id" = true
+  }
+}
+
+# API Gateway Integration - DELETE /task/{id}
+resource "aws_api_gateway_integration" "task_id_delete" {
+  rest_api_id             = aws_api_gateway_rest_api.task_service_api.id
+  resource_id             = aws_api_gateway_resource.task_id.id
+  http_method             = aws_api_gateway_method.task_id_delete.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.task_service_lambda.invoke_arn
+}
+
+# ========================================
+# Old Endpoints (Keeping for backward compatibility)
+# ========================================
+
+# API Gateway Resource - /get
+resource "aws_api_gateway_resource" "get" {
+  rest_api_id = aws_api_gateway_rest_api.task_service_api.id
+  parent_id   = aws_api_gateway_rest_api.task_service_api.root_resource_id
+  path_part   = "get"
+}
+
+# API Gateway Method - GET /get
+resource "aws_api_gateway_method" "get_get" {
+  rest_api_id   = aws_api_gateway_rest_api.task_service_api.id
+  resource_id   = aws_api_gateway_resource.get.id
+  http_method   = "GET"
+  authorization = "NONE"
+}
+
+# API Gateway Integration - GET /get
+resource "aws_api_gateway_integration" "get_get" {
+  rest_api_id             = aws_api_gateway_rest_api.task_service_api.id
+  resource_id             = aws_api_gateway_resource.get.id
+  http_method             = aws_api_gateway_method.get_get.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.task_service_lambda.invoke_arn
+}
+
+# API Gateway Resource - /post
+resource "aws_api_gateway_resource" "post" {
+  rest_api_id = aws_api_gateway_rest_api.task_service_api.id
+  parent_id   = aws_api_gateway_rest_api.task_service_api.root_resource_id
+  path_part   = "post"
+}
+
+# API Gateway Method - POST /post
+resource "aws_api_gateway_method" "post_post" {
+  rest_api_id   = aws_api_gateway_rest_api.task_service_api.id
+  resource_id   = aws_api_gateway_resource.post.id
+  http_method   = "POST"
+  authorization = "NONE"
+}
+
+# API Gateway Integration - POST /post
+resource "aws_api_gateway_integration" "post_post" {
+  rest_api_id             = aws_api_gateway_rest_api.task_service_api.id
+  resource_id             = aws_api_gateway_resource.post.id
+  http_method             = aws_api_gateway_method.post_post.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.task_service_lambda.invoke_arn
+}
+
+# API Gateway Resource - /tasks
+resource "aws_api_gateway_resource" "tasks" {
+  rest_api_id = aws_api_gateway_rest_api.task_service_api.id
+  parent_id   = aws_api_gateway_rest_api.task_service_api.root_resource_id
+  path_part   = "tasks"
+}
+
+# API Gateway Method - GET /tasks
+resource "aws_api_gateway_method" "tasks_get" {
+  rest_api_id   = aws_api_gateway_rest_api.task_service_api.id
+  resource_id   = aws_api_gateway_resource.tasks.id
+  http_method   = "GET"
+  authorization = "NONE"
+}
+
+# API Gateway Integration - GET /tasks
+resource "aws_api_gateway_integration" "tasks_get" {
+  rest_api_id             = aws_api_gateway_rest_api.task_service_api.id
+  resource_id             = aws_api_gateway_resource.tasks.id
+  http_method             = aws_api_gateway_method.tasks_get.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.task_service_lambda.invoke_arn
+}
+
+# API Gateway Method - POST /tasks
+resource "aws_api_gateway_method" "tasks_post" {
+  rest_api_id   = aws_api_gateway_rest_api.task_service_api.id
+  resource_id   = aws_api_gateway_resource.tasks.id
+  http_method   = "POST"
+  authorization = "NONE"
+}
+
+# API Gateway Integration - POST /tasks
+resource "aws_api_gateway_integration" "tasks_post" {
+  rest_api_id             = aws_api_gateway_rest_api.task_service_api.id
+  resource_id             = aws_api_gateway_resource.tasks.id
+  http_method             = aws_api_gateway_method.tasks_post.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.task_service_lambda.invoke_arn
+}
+
+# API Gateway Resource - /id
+resource "aws_api_gateway_resource" "id" {
+  rest_api_id = aws_api_gateway_rest_api.task_service_api.id
+  parent_id   = aws_api_gateway_rest_api.task_service_api.root_resource_id
+  path_part   = "id"
+}
+
+# API Gateway Resource - /id/{id}
+resource "aws_api_gateway_resource" "id_param" {
+  rest_api_id = aws_api_gateway_rest_api.task_service_api.id
+  parent_id   = aws_api_gateway_resource.id.id
+  path_part   = "{id}"
+}
+
+# API Gateway Method - GET /id/{id}
+resource "aws_api_gateway_method" "id_get" {
+  rest_api_id   = aws_api_gateway_rest_api.task_service_api.id
+  resource_id   = aws_api_gateway_resource.id_param.id
+  http_method   = "GET"
+  authorization = "NONE"
+
+  request_parameters = {
+    "method.request.path.id" = true
+  }
+}
+
+# API Gateway Integration - GET /id/{id}
+resource "aws_api_gateway_integration" "id_get" {
+  rest_api_id             = aws_api_gateway_rest_api.task_service_api.id
+  resource_id             = aws_api_gateway_resource.id_param.id
+  http_method             = aws_api_gateway_method.id_get.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.task_service_lambda.invoke_arn
+}
+
+# Lambda permission for API Gateway
+resource "aws_lambda_permission" "allow_api_gateway" {
+  statement_id  = "AllowAPIGatewayInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.task_service_lambda.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.task_service_api.execution_arn}/*/*"
+}
+
+# API Gateway Deployment
+resource "aws_api_gateway_deployment" "task_service_deployment" {
+  rest_api_id = aws_api_gateway_rest_api.task_service_api.id
+
+  triggers = {
+    redeployment = sha1(jsonencode([
+      # /ping
+      aws_api_gateway_resource.ping.id,
+      aws_api_gateway_method.ping_get.id,
+      aws_api_gateway_integration.ping_get.id,
+      # /task (new standardized endpoints)
+      aws_api_gateway_resource.task.id,
+      aws_api_gateway_method.task_get.id,
+      aws_api_gateway_integration.task_get.id,
+      aws_api_gateway_method.task_post.id,
+      aws_api_gateway_integration.task_post.id,
+      # /task/{id}
+      aws_api_gateway_resource.task_id.id,
+      aws_api_gateway_method.task_id_get.id,
+      aws_api_gateway_integration.task_id_get.id,
+      aws_api_gateway_method.task_id_put.id,
+      aws_api_gateway_integration.task_id_put.id,
+      aws_api_gateway_method.task_id_delete.id,
+      aws_api_gateway_integration.task_id_delete.id,
+      # Old endpoints (backward compatibility)
+      aws_api_gateway_resource.get.id,
+      aws_api_gateway_method.get_get.id,
+      aws_api_gateway_integration.get_get.id,
+      aws_api_gateway_resource.post.id,
+      aws_api_gateway_method.post_post.id,
+      aws_api_gateway_integration.post_post.id,
+      aws_api_gateway_resource.tasks.id,
+      aws_api_gateway_method.tasks_get.id,
+      aws_api_gateway_integration.tasks_get.id,
+      aws_api_gateway_method.tasks_post.id,
+      aws_api_gateway_integration.tasks_post.id,
+      aws_api_gateway_resource.id.id,
+      aws_api_gateway_resource.id_param.id,
+      aws_api_gateway_method.id_get.id,
+      aws_api_gateway_integration.id_get.id,
+    ]))
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
+
+  depends_on = [
+    aws_api_gateway_integration.ping_get,
+    aws_api_gateway_integration.task_get,
+    aws_api_gateway_integration.task_post,
+    aws_api_gateway_integration.task_id_get,
+    aws_api_gateway_integration.task_id_put,
+    aws_api_gateway_integration.task_id_delete,
+    aws_api_gateway_integration.get_get,
+    aws_api_gateway_integration.post_post,
+    aws_api_gateway_integration.tasks_get,
+    aws_api_gateway_integration.tasks_post,
+    aws_api_gateway_integration.id_get,
+  ]
+}
+
+# API Gateway Stage
+resource "aws_api_gateway_stage" "task_service_stage" {
+  deployment_id = aws_api_gateway_deployment.task_service_deployment.id
+  rest_api_id   = aws_api_gateway_rest_api.task_service_api.id
+  stage_name    = var.environment
 }
 
 # ========================================
@@ -415,6 +789,27 @@ output "task_service_function_url" {
   value       = aws_lambda_function_url.task_service_url.function_url
 }
 
+output "task_service_api_gateway_id" {
+  description = "API Gateway REST API ID"
+  value       = aws_api_gateway_rest_api.task_service_api.id
+}
+
+output "task_service_api_gateway_url" {
+  description = "API Gateway base URL for TaskService"
+  value       = aws_api_gateway_stage.task_service_stage.invoke_url
+}
+
+output "task_service_api_endpoints" {
+  description = "API Gateway endpoint URLs"
+  value = {
+    ping      = "${aws_api_gateway_stage.task_service_stage.invoke_url}/ping"
+    get       = "${aws_api_gateway_stage.task_service_stage.invoke_url}/get"
+    post      = "${aws_api_gateway_stage.task_service_stage.invoke_url}/post"
+    tasks     = "${aws_api_gateway_stage.task_service_stage.invoke_url}/tasks"
+    get_by_id = "${aws_api_gateway_stage.task_service_stage.invoke_url}/id/{id}"
+  }
+}
+
 output "task_queue_url" {
   description = "SQS Queue URL for TaskService"
   value       = aws_sqs_queue.task_queue.url
@@ -438,6 +833,14 @@ output "eventbridge_rule_name" {
 output "task_service_test_commands" {
   description = "Commands to test TaskService"
   value = {
+    # Test API Gateway endpoints (Recommended)
+    api_gateway_ping       = "curl -X GET ${aws_api_gateway_stage.task_service_stage.invoke_url}/ping"
+    api_gateway_get        = "curl -X GET ${aws_api_gateway_stage.task_service_stage.invoke_url}/get"
+    api_gateway_post       = "curl -X POST ${aws_api_gateway_stage.task_service_stage.invoke_url}/post -H 'Content-Type: application/json' -d '{\"title\":\"Test Task\"}'"
+    api_gateway_get_by_id  = "curl -X GET ${aws_api_gateway_stage.task_service_stage.invoke_url}/id/12345"
+    api_gateway_tasks_get  = "curl -X GET ${aws_api_gateway_stage.task_service_stage.invoke_url}/tasks"
+    api_gateway_tasks_post = "curl -X POST ${aws_api_gateway_stage.task_service_stage.invoke_url}/tasks -H 'Content-Type: application/json' -d '{\"title\":\"New Task\"}'",
+
     # Test with Postman/curl using Function URL
     http_test = "curl -X POST ${aws_lambda_function_url.task_service_url.function_url} -H 'Content-Type: application/json' -d '{\"test\":\"data\"}'"
 
