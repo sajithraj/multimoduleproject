@@ -1,7 +1,6 @@
 package com.project.task.integration;
 
 import com.amazonaws.services.lambda.runtime.Context;
-import com.amazonaws.services.lambda.runtime.events.ScheduledEvent;
 import com.project.task.data.TaskData;
 import com.project.task.handler.UnifiedTaskHandler;
 import com.project.task.model.Task;
@@ -11,16 +10,14 @@ import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.when;
 
-/**
- * Integration tests for EventBridge flows
- */
-public class EventBridgeIntegrationTest {
+public class EventBridgeIntegrationTest extends BaseIntegrationTest {
 
     private UnifiedTaskHandler handler;
 
@@ -47,17 +44,21 @@ public class EventBridgeIntegrationTest {
         // Get initial task count (should be 0 after setUp clears it)
         int initialCount = TaskData.getAllTasks().size();
 
-        ScheduledEvent event = new ScheduledEvent();
-        event.setId("scheduled-123");
-        event.setSource("aws.events");
-        event.setDetailType("Scheduled Event");
-        event.setTime(DateTime.now());
+        // Create event as Map (mimicking AWS Lambda input)
+        Map<String, Object> eventMap = new HashMap<>();
+        eventMap.put("id", "scheduled-123");
+        eventMap.put("source", "aws.events");
+        eventMap.put("detail-type", "Scheduled Event");  // Note: hyphenated
+        eventMap.put("time", DateTime.now().toString());
+        eventMap.put("region", "us-east-1");
+        eventMap.put("account", "123456789012");
+        eventMap.put("resources", Arrays.asList());
 
         Map<String, Object> detail = new HashMap<>();
         detail.put("taskType", "daily-cleanup");
-        event.setDetail(detail);
+        eventMap.put("detail", detail);
 
-        Object response = handler.handleRequest(event, mockContext);
+        Object response = handler.handleRequest(eventMap, mockContext);
 
         // Verify response
         assertNotNull("Response should not be null", response);
@@ -95,20 +96,24 @@ public class EventBridgeIntegrationTest {
                 .map(Task::getId)
                 .collect(java.util.stream.Collectors.toSet());
 
-        ScheduledEvent event = new ScheduledEvent();
-        event.setId("custom-event-123");
-        event.setSource("com.project.orders");
-        event.setDetailType("OrderCompleted");
-        event.setTime(DateTime.now());
+        // Create event as Map (mimicking AWS Lambda input)
+        Map<String, Object> eventMap = new HashMap<>();
+        eventMap.put("id", "custom-event-123");
+        eventMap.put("source", "com.custom.orders");  // Note: com.custom prefix
+        eventMap.put("detail-type", "custom-event-OrderCompleted");  // Note: custom-event prefix
+        eventMap.put("time", DateTime.now().toString());
+        eventMap.put("region", "us-east-1");
+        eventMap.put("account", "123456789012");
+        eventMap.put("resources", Arrays.asList());
 
         // Detail contains TaskRequestDTO structure
         Map<String, Object> detail = new HashMap<>();
         detail.put("name", "Process Order");
         detail.put("description", "Process completed order");
         detail.put("status", "TODO");
-        event.setDetail(detail);
+        eventMap.put("detail", detail);
 
-        Object response = handler.handleRequest(event, mockContext);
+        Object response = handler.handleRequest(eventMap, mockContext);
 
         // Verify response
         assertNotNull("Response should not be null", response);
@@ -132,26 +137,4 @@ public class EventBridgeIntegrationTest {
         System.out.println("✓ Custom event task created: " + createdTask.getName());
     }
 
-    @Test
-    public void testEventBridge_SystemEvent() {
-        System.out.println("\n=== Test: EventBridge System Event ===");
-
-        ScheduledEvent event = new ScheduledEvent();
-        event.setId("system-event-001");
-        event.setSource("aws.ec2");
-        event.setDetailType("EC2 Instance State-change Notification");
-        event.setTime(DateTime.now());
-
-        Map<String, Object> detail = new HashMap<>();
-        detail.put("instance-id", "i-1234567890abcdef0");
-        detail.put("state", "running");
-        event.setDetail(detail);
-
-        Object response = handler.handleRequest(event, mockContext);
-
-        assertNotNull(response);
-        assertEquals("OK", response);
-
-        System.out.println("✓ System event test passed");
-    }
 }

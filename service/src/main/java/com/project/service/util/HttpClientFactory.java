@@ -9,20 +9,11 @@ import java.net.http.HttpClient;
 import java.security.cert.X509Certificate;
 import java.time.Duration;
 
-/**
- * Factory for creating and managing HTTP client instances.
- * Uses Java's built-in HttpClient (java.net.http) with custom SSL configuration.
- * Matches the approach used in ApigeeBearerTransformer for consistency.
- */
 public class HttpClientFactory {
 
     private static final Logger log = LogManager.getLogger(HttpClientFactory.class);
     private static volatile HttpClient client;
 
-    /**
-     * Gets or creates HTTP client instance with SSL trust-all configuration.
-     * Uses java.net.http.HttpClient (same as token project) for consistency.
-     */
     public static HttpClient getClient() {
         if (client == null) {
             synchronized (HttpClientFactory.class) {
@@ -34,7 +25,6 @@ public class HttpClientFactory {
                                 .loadTrustMaterial(null, (X509Certificate[] chain, String authType) -> true)
                                 .build();
 
-                        // Use java.net.http.HttpClient (same as ApigeeBearerTransformer)
                         client = HttpClient.newBuilder()
                                 .sslContext(sslContext)
                                 .connectTimeout(Duration.ofSeconds(30))

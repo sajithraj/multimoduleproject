@@ -8,10 +8,6 @@ import lombok.NoArgsConstructor;
 
 import javax.validation.constraints.NotBlank;
 
-/**
- * Task Request DTO
- * Contains only input fields from user for creating/updating tasks
- */
 @Data
 @Builder
 @NoArgsConstructor
@@ -26,6 +22,6 @@ public class TaskRequestDTO {
     private String description;
 
     @JsonProperty("status")
-    private String status;  // Will be converted to enum
-}
+    private String status;
 
+}

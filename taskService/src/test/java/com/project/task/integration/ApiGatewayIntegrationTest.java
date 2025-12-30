@@ -15,10 +15,7 @@ import java.util.Map;
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.when;
 
-/**
- * Integration tests for API Gateway flows
- */
-public class ApiGatewayIntegrationTest {
+public class ApiGatewayIntegrationTest extends BaseIntegrationTest {
 
     private UnifiedTaskHandler handler;
 
@@ -42,13 +39,14 @@ public class ApiGatewayIntegrationTest {
         APIGatewayProxyRequestEvent event = new APIGatewayProxyRequestEvent();
         event.setHttpMethod("GET");
         event.setPath("/ping");
+        event.setResource("/ping");
 
         APIGatewayProxyRequestEvent.ProxyRequestContext ctx =
                 new APIGatewayProxyRequestEvent.ProxyRequestContext();
         ctx.setRequestId("ping-integration-001");
         event.setRequestContext(ctx);
 
-        Object response = handler.handleRequest(event, mockContext);
+        Object response = handler.handleRequest(convertToMap(event), mockContext);
 
         assertNotNull(response);
         APIGatewayProxyResponseEvent apiResponse = (APIGatewayProxyResponseEvent) response;
@@ -66,13 +64,14 @@ public class ApiGatewayIntegrationTest {
         APIGatewayProxyRequestEvent event = new APIGatewayProxyRequestEvent();
         event.setHttpMethod("GET");
         event.setPath("/task");
+        event.setResource("/task");
 
         APIGatewayProxyRequestEvent.ProxyRequestContext ctx =
                 new APIGatewayProxyRequestEvent.ProxyRequestContext();
         ctx.setRequestId("get-all-001");
         event.setRequestContext(ctx);
 
-        Object response = handler.handleRequest(event, mockContext);
+        Object response = handler.handleRequest(convertToMap(event), mockContext);
 
         assertNotNull(response);
         APIGatewayProxyResponseEvent apiResponse = (APIGatewayProxyResponseEvent) response;
@@ -90,6 +89,7 @@ public class ApiGatewayIntegrationTest {
         APIGatewayProxyRequestEvent event = new APIGatewayProxyRequestEvent();
         event.setHttpMethod("GET");
         event.setPath("/task/task-1");
+        event.setResource("/task/task-1");
 
         Map<String, String> pathParams = new HashMap<>();
         pathParams.put("id", "task-1");
@@ -100,7 +100,7 @@ public class ApiGatewayIntegrationTest {
         ctx.setRequestId("get-by-id-001");
         event.setRequestContext(ctx);
 
-        Object response = handler.handleRequest(event, mockContext);
+        Object response = handler.handleRequest(convertToMap(event), mockContext);
 
         assertNotNull(response);
         APIGatewayProxyResponseEvent apiResponse = (APIGatewayProxyResponseEvent) response;
@@ -117,6 +117,7 @@ public class ApiGatewayIntegrationTest {
         APIGatewayProxyRequestEvent event = new APIGatewayProxyRequestEvent();
         event.setHttpMethod("POST");
         event.setPath("/task");
+        event.setResource("/task");
         event.setBody("{\"name\":\"New Task\",\"description\":\"Integration test task\"}");
 
         Map<String, String> headers = new HashMap<>();
@@ -128,7 +129,7 @@ public class ApiGatewayIntegrationTest {
         ctx.setRequestId("post-create-001");
         event.setRequestContext(ctx);
 
-        Object response = handler.handleRequest(event, mockContext);
+        Object response = handler.handleRequest(convertToMap(event), mockContext);
 
         assertNotNull(response);
         APIGatewayProxyResponseEvent apiResponse = (APIGatewayProxyResponseEvent) response;
@@ -145,6 +146,7 @@ public class ApiGatewayIntegrationTest {
         APIGatewayProxyRequestEvent event = new APIGatewayProxyRequestEvent();
         event.setHttpMethod("PUT");
         event.setPath("/task/task-1");
+        event.setResource("/task/task-1");
         event.setBody("{\"name\":\"Updated Task\",\"status\":\"COMPLETED\"}");
 
         Map<String, String> headers = new HashMap<>();
@@ -160,7 +162,7 @@ public class ApiGatewayIntegrationTest {
         ctx.setRequestId("put-update-001");
         event.setRequestContext(ctx);
 
-        Object response = handler.handleRequest(event, mockContext);
+        Object response = handler.handleRequest(convertToMap(event), mockContext);
 
         assertNotNull(response);
         APIGatewayProxyResponseEvent apiResponse = (APIGatewayProxyResponseEvent) response;
@@ -177,6 +179,7 @@ public class ApiGatewayIntegrationTest {
         APIGatewayProxyRequestEvent event = new APIGatewayProxyRequestEvent();
         event.setHttpMethod("DELETE");
         event.setPath("/task/task-2");
+        event.setResource("/task/task-2");
 
         Map<String, String> pathParams = new HashMap<>();
         pathParams.put("id", "task-2");
@@ -187,7 +190,7 @@ public class ApiGatewayIntegrationTest {
         ctx.setRequestId("delete-001");
         event.setRequestContext(ctx);
 
-        Object response = handler.handleRequest(event, mockContext);
+        Object response = handler.handleRequest(convertToMap(event), mockContext);
 
         assertNotNull(response);
         APIGatewayProxyResponseEvent apiResponse = (APIGatewayProxyResponseEvent) response;
@@ -204,6 +207,7 @@ public class ApiGatewayIntegrationTest {
         APIGatewayProxyRequestEvent event = new APIGatewayProxyRequestEvent();
         event.setHttpMethod("POST");
         event.setPath("/task");
+        event.setResource("/task");
         event.setBody("invalid-json{{{");
 
         Map<String, String> headers = new HashMap<>();
@@ -215,7 +219,7 @@ public class ApiGatewayIntegrationTest {
         ctx.setRequestId("error-handling-001");
         event.setRequestContext(ctx);
 
-        Object response = handler.handleRequest(event, mockContext);
+        Object response = handler.handleRequest(convertToMap(event), mockContext);
 
         assertNotNull(response);
         APIGatewayProxyResponseEvent apiResponse = (APIGatewayProxyResponseEvent) response;
@@ -237,13 +241,14 @@ public class ApiGatewayIntegrationTest {
             APIGatewayProxyRequestEvent event = new APIGatewayProxyRequestEvent();
             event.setHttpMethod("GET");
             event.setPath("/ping");
+            event.setResource("/ping");
 
             APIGatewayProxyRequestEvent.ProxyRequestContext ctx =
                     new APIGatewayProxyRequestEvent.ProxyRequestContext();
             ctx.setRequestId("perf-test-" + i);
             event.setRequestContext(ctx);
 
-            Object response = handler.handleRequest(event, mockContext);
+            Object response = handler.handleRequest(convertToMap(event), mockContext);
             if (response != null) {
                 successCount++;
             }
@@ -260,4 +265,5 @@ public class ApiGatewayIntegrationTest {
         System.out.println("✓ Performance test passed");
     }
 }
+
 

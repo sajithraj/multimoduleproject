@@ -5,10 +5,6 @@ import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
-/**
- * Test for SSMApigeeProvider that checks if required environment variables are present.
- * For Java 21+, we use system properties as fallback when environment variables are not available.
- */
 public class ApigeeSecretsProviderTest {
 
     @Before
@@ -38,8 +34,6 @@ public class ApigeeSecretsProviderTest {
     public void testProviderClassStructure() {
         System.out.println("Testing SSMApigeeProvider class structure...");
 
-        // Skip if environment variables are not available
-        // In CI/CD or real Lambda, these will be set
         if (System.getenv("AWS_REGION") == null && System.getProperty("AWS_REGION") == null) {
             System.out.println("SKIPPING: Environment not configured for provider initialization");
             Assume.assumeTrue("Environment variables not set", false);

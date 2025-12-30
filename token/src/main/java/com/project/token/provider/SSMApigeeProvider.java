@@ -35,10 +35,8 @@ public class SSMApigeeProvider extends BaseProvider {
     private final SecretsManagerClient client;
 
     private static String getRequiredEnv(String name) {
-        // Try environment variable first (production)
         String val = System.getenv(name);
 
-        // Fallback to system property (testing)
         if (val == null || val.trim().isEmpty()) {
             val = System.getProperty(name);
         }
@@ -49,9 +47,6 @@ public class SSMApigeeProvider extends BaseProvider {
         return val;
     }
 
-    /**
-     * Constructor with CacheManager and TransformationManager.
-     */
     private SSMApigeeProvider(CacheManager cacheManager,
                               SecretsManagerClient client,
                               TransformationManager transformationManager) {

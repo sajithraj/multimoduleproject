@@ -1,35 +1,23 @@
-package com.project.task.router;
+package com.project.task.service;
 
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
-import com.project.task.service.ApiGatewayTaskService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Routes API Gateway requests to appropriate handlers based on path and method.
- * Standardized endpoints: /ping, /task, /task/{id}
- */
-public class ApiGatewayRouter {
+public class ApiGatewayTaskServiceHandler {
 
-    private static final Logger log = LogManager.getLogger(ApiGatewayRouter.class);
+    private static final Logger log = LogManager.getLogger(ApiGatewayTaskServiceHandler.class);
     private final ApiGatewayTaskService taskService;
 
-    public ApiGatewayRouter(ApiGatewayTaskService taskService) {
+    public ApiGatewayTaskServiceHandler(ApiGatewayTaskService taskService) {
         this.taskService = taskService;
     }
 
-    /**
-     * Route API Gateway request to appropriate handler.
-     *
-     * @param event   API Gateway request event
-     * @param context Lambda context
-     * @return API Gateway response
-     */
     public APIGatewayProxyResponseEvent route(
             APIGatewayProxyRequestEvent event,
             Context context) {
@@ -43,11 +31,11 @@ public class ApiGatewayRouter {
             // Route based on path and method
             return switch (path) {
                 case "/ping" -> handlePing(event, context);
-                case "/task" -> handleTaskCollection(event, context);  // GET all or POST new
+                case "/task" -> handleTaskCollection(event, context);
                 default -> {
                     // Handle dynamic paths like /task/{id}
                     if (path.startsWith("/task/")) {
-                        yield handleTaskById(event, context);  // GET, PUT, or DELETE by ID
+                        yield handleTaskById(event, context);
                     }
                     yield handleNotFound(path, method);
                 }
@@ -59,9 +47,6 @@ public class ApiGatewayRouter {
         }
     }
 
-    /**
-     * Handle /ping endpoint - Health check
-     */
     private APIGatewayProxyResponseEvent handlePing(
             APIGatewayProxyRequestEvent event,
             Context context) {
@@ -70,11 +55,6 @@ public class ApiGatewayRouter {
         return taskService.processPing(event, context);
     }
 
-    /**
-     * Handle /task endpoint - Collection operations
-     * GET: List all tasks
-     * POST: Create new task
-     */
     private APIGatewayProxyResponseEvent handleTaskCollection(
             APIGatewayProxyRequestEvent event,
             Context context) {
@@ -95,12 +75,6 @@ public class ApiGatewayRouter {
         };
     }
 
-    /**
-     * Handle /task/{id} endpoint - Individual task operations
-     * GET: Get task by ID
-     * PUT: Update task
-     * DELETE: Delete task
-     */
     private APIGatewayProxyResponseEvent handleTaskById(
             APIGatewayProxyRequestEvent event,
             Context context) {
@@ -132,9 +106,6 @@ public class ApiGatewayRouter {
         };
     }
 
-    /**
-     * Handle 404 - Not Found
-     */
     private APIGatewayProxyResponseEvent handleNotFound(String path, String method) {
         log.warn("No route found for: {} {}", method, path);
 
@@ -154,9 +125,6 @@ public class ApiGatewayRouter {
         return buildResponse(404, errorBody);
     }
 
-    /**
-     * Build error response
-     */
     private APIGatewayProxyResponseEvent buildErrorResponse(int statusCode, String message) {
         Map<String, Object> errorBody = new HashMap<>();
         errorBody.put("service", "task-service");
@@ -166,9 +134,6 @@ public class ApiGatewayRouter {
         return buildResponse(statusCode, errorBody);
     }
 
-    /**
-     * Build API Gateway response
-     */
     private APIGatewayProxyResponseEvent buildResponse(int statusCode, Object body) {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
@@ -181,5 +146,5 @@ public class ApiGatewayRouter {
                 .withHeaders(headers)
                 .withBody(com.project.task.util.JsonUtil.toJson(body));
     }
-}
 
+}

@@ -9,10 +9,6 @@ import org.mapstruct.MappingTarget;
 import org.mapstruct.NullValuePropertyMappingStrategy;
 import org.mapstruct.factory.Mappers;
 
-/**
- * MapStruct Mapper for Task entity and DTOs
- * Production-grade mapper with proper configuration
- */
 @Mapper(
         componentModel = "default",
         nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE
@@ -21,29 +17,18 @@ public interface TaskMapper {
 
     TaskMapper INSTANCE = Mappers.getMapper(TaskMapper.class);
 
-    /**
-     * Convert TaskRequestDTO to Task entity
-     * Ignores id, createdAt, updatedAt (auto-generated)
-     */
-    @Mapping(target = "id", ignore = true)
-    @Mapping(target = "createdAt", ignore = true)
-    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "id", expression = "java(java.util.UUID.randomUUID().toString())")
+    @Mapping(target = "createdAt", expression = "java(System.currentTimeMillis())")
+    @Mapping(target = "updatedAt", expression = "java(System.currentTimeMillis())")
     Task toEntity(TaskRequestDTO dto);
 
-    /**
-     * Convert Task entity to TaskResponseDTO
-     * Maps status enum to string
-     */
+
     @Mapping(target = "status", expression = "java(task.getStatus() != null ? task.getStatus().name() : null)")
     TaskResponseDTO toResponseDTO(Task task);
 
-    /**
-     * Update existing Task entity from TaskRequestDTO
-     * Used for PUT operations
-     */
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
-    void updateEntityFromDTO(TaskRequestDTO dto, @MappingTarget Task task);
-}
+    void updateEntityFromDto(TaskRequestDTO dto, @MappingTarget Task task);
 
+}

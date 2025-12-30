@@ -1,6 +1,7 @@
 # Task Service - AWS Lambda Multi-Event Handler
 
-**A production-grade AWS Lambda service that handles multiple event sources (API Gateway, SQS, EventBridge) with unified routing and processing.**
+**A production-grade AWS Lambda service that handles multiple event sources (API Gateway, SQS, EventBridge) with unified
+routing and processing.**
 
 [![Java](https://img.shields.io/badge/Java-21-orange.svg)](https://openjdk.java.net/)
 [![Maven](https://img.shields.io/badge/Maven-3.9+-blue.svg)](https://maven.apache.org/)
@@ -107,6 +108,7 @@ External Event Sources:
 ## ✨ Features
 
 ### API Gateway Integration
+
 - ✅ GET /ping - Health check
 - ✅ GET /task - List all tasks
 - ✅ GET /task/{id} - Get task by ID
@@ -117,6 +119,7 @@ External Event Sources:
 - ✅ Standard response format
 
 ### SQS Integration
+
 - ✅ Batch message processing (up to 10 messages)
 - ✅ Partial batch failure support (`ReportBatchItemFailures`)
 - ✅ Dead Letter Queue (DLQ) for failed messages
@@ -125,12 +128,14 @@ External Event Sources:
 - ✅ Efficient deserialization with Jackson MixIn
 
 ### EventBridge Integration
+
 - ✅ Scheduled events (cron/rate expressions)
 - ✅ Custom business events
 - ✅ Task creation from event detail
 - ✅ Flexible event routing
 
 ### Technical Features
+
 - ✅ **Unified Event Routing** - Single handler for all event types
 - ✅ **Type-Safe DTOs** - MapStruct for object mapping
 - ✅ **Lombok** - Clean code with annotations
@@ -206,12 +211,14 @@ SetUpProject/
 ## 🔧 Prerequisites
 
 ### Required
+
 - **Java 21+** - OpenJDK or Amazon Corretto
 - **Maven 3.9+** - Build tool
 - **Docker** - For LocalStack
 - **AWS CLI v2** - For AWS/LocalStack interaction
 
 ### Optional
+
 - **Terraform 1.5+** - For infrastructure deployment
 - **Postman** - For API testing
 - **IntelliJ IDEA** - Recommended IDE
@@ -219,24 +226,28 @@ SetUpProject/
 ### Installation
 
 **Java:**
+
 ```powershell
 # Download from: https://adoptium.net/
 java -version
 ```
 
 **Maven:**
+
 ```powershell
 # Download from: https://maven.apache.org/
 mvn -version
 ```
 
 **Docker:**
+
 ```powershell
 # Download from: https://www.docker.com/
 docker --version
 ```
 
 **AWS CLI:**
+
 ```powershell
 # Download from: https://aws.amazon.com/cli/
 aws --version
@@ -357,6 +368,7 @@ Tests run: 31, Failures: 0, Errors: 0, Skipped: 0
 ### Test Categories
 
 **API Gateway Tests:**
+
 - Health check (GET /ping)
 - CRUD operations (GET, POST, PUT, DELETE)
 - Error handling (404, 400, 500)
@@ -364,6 +376,7 @@ Tests run: 31, Failures: 0, Errors: 0, Skipped: 0
 - Path parameters
 
 **SQS Tests:**
+
 - Single message processing
 - Batch processing (multiple messages)
 - Partial batch failures
@@ -372,6 +385,7 @@ Tests run: 31, Failures: 0, Errors: 0, Skipped: 0
 - Invalid messages
 
 **EventBridge Tests:**
+
 - Scheduled events
 - Custom business events
 - System events
@@ -419,12 +433,14 @@ aws lambda invoke --function-name task-service-dev --payload $event --endpoint-u
 ### LocalStack (Development)
 
 **Using Terraform:**
+
 ```powershell
 cd infra/terraform
 terraform apply -var="use_localstack=true" -auto-approve
 ```
 
 **Using Script:**
+
 ```powershell
 .\deploy-localstack.ps1
 ```
@@ -432,14 +448,16 @@ terraform apply -var="use_localstack=true" -auto-approve
 ### AWS (Production)
 
 **1. Update Terraform Variables:**
+
 ```hcl
 # infra/terraform/terraform.tfvars
 use_localstack = false
-aws_region = "us-east-1"
-environment = "prod"
+aws_region     = "us-east-1"
+environment    = "prod"
 ```
 
 **2. Deploy:**
+
 ```powershell
 cd infra/terraform
 terraform init
@@ -448,6 +466,7 @@ terraform apply
 ```
 
 **3. Verify:**
+
 ```powershell
 aws lambda list-functions --region us-east-1
 aws apigateway get-rest-apis --region us-east-1
@@ -458,6 +477,7 @@ aws apigateway get-rest-apis --region us-east-1
 ## 📚 API Documentation
 
 ### Base URL
+
 ```
 LocalStack: http://localhost:4566/restapis/{api-id}/dev/_user_request_
 AWS: https://{api-id}.execute-api.{region}.amazonaws.com/dev
@@ -466,11 +486,13 @@ AWS: https://{api-id}.execute-api.{region}.amazonaws.com/dev
 ### Endpoints
 
 #### 1. Health Check
+
 ```http
 GET /ping
 ```
 
 **Response:**
+
 ```json
 {
   "service": "task-service",
@@ -483,11 +505,13 @@ GET /ping
 ```
 
 #### 2. Get All Tasks
+
 ```http
 GET /task
 ```
 
 **Response:**
+
 ```json
 {
   "service": "task-service",
@@ -507,11 +531,13 @@ GET /task
 ```
 
 #### 3. Get Task by ID
+
 ```http
 GET /task/{id}
 ```
 
 **Response (200):**
+
 ```json
 {
   "service": "task-service",
@@ -525,6 +551,7 @@ GET /task/{id}
 ```
 
 **Response (404):**
+
 ```json
 {
   "service": "task-service",
@@ -534,6 +561,7 @@ GET /task/{id}
 ```
 
 #### 4. Create Task
+
 ```http
 POST /task
 Content-Type: application/json
@@ -546,6 +574,7 @@ Content-Type: application/json
 ```
 
 **Response (201):**
+
 ```json
 {
   "service": "task-service",
@@ -561,6 +590,7 @@ Content-Type: application/json
 ```
 
 #### 5. Update Task
+
 ```http
 PUT /task/{id}
 Content-Type: application/json
@@ -572,11 +602,13 @@ Content-Type: application/json
 ```
 
 #### 6. Delete Task
+
 ```http
 DELETE /task/{id}
 ```
 
 **Response (200):**
+
 ```json
 {
   "service": "task-service",
@@ -599,6 +631,7 @@ For complete API documentation with examples, see [taskService/README.md](taskSe
 REST API with 6 endpoints for full CRUD operations on tasks.
 
 **Example:**
+
 ```powershell
 $apiUrl = "YOUR_API_URL"
 Invoke-RestMethod -Uri "$apiUrl/task" -Method GET
@@ -609,6 +642,7 @@ Invoke-RestMethod -Uri "$apiUrl/task" -Method GET
 Asynchronous message processing with batch support and DLQ.
 
 **Message Format:**
+
 ```json
 {
   "name": "Task from SQS",
@@ -618,6 +652,7 @@ Asynchronous message processing with batch support and DLQ.
 ```
 
 **Send Message:**
+
 ```powershell
 aws sqs send-message \
   --queue-url http://localhost:4566/000000000000/task-queue \
@@ -628,6 +663,7 @@ aws sqs send-message \
 ### EventBridge
 
 **Scheduled Events:**
+
 ```json
 {
   "id": "scheduled-123",
@@ -636,9 +672,11 @@ aws sqs send-message \
   "detail": {}
 }
 ```
+
 Creates task with name: `"scheduled event scheduled-123"`
 
 **Custom Events:**
+
 ```json
 {
   "source": "com.project.orders",
@@ -650,6 +688,7 @@ Creates task with name: `"scheduled event scheduled-123"`
   }
 }
 ```
+
 Creates task from detail fields.
 
 ---
@@ -716,6 +755,7 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 ### Common Issues
 
 #### Issue: LocalStack not starting
+
 ```powershell
 # Check Docker
 docker ps
@@ -727,6 +767,7 @@ docker-compose up -d
 ```
 
 #### Issue: Lambda not found
+
 ```powershell
 # Check Lambda exists
 aws lambda list-functions --endpoint-url http://localhost:4566
@@ -737,6 +778,7 @@ terraform apply -var="use_localstack=true" -auto-approve
 ```
 
 #### Issue: SQS messages not processing
+
 ```powershell
 # Check event source mapping
 aws lambda list-event-source-mappings \
@@ -749,6 +791,7 @@ cd infra/terraform
 ```
 
 #### Issue: API Gateway 403 errors
+
 ```powershell
 # Get correct API URL
 cd infra/terraform

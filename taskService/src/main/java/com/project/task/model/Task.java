@@ -9,10 +9,6 @@ import lombok.NoArgsConstructor;
 
 import java.time.Instant;
 
-/**
- * Task Entity (DTO)
- * Production-ready entity with Lombok
- */
 @Data
 @Builder
 @NoArgsConstructor
@@ -41,9 +37,6 @@ public class Task {
     @Builder.Default
     private Long updatedAt = Instant.now().toEpochMilli();
 
-    /**
-     * Task Status Enum
-     */
     public enum TaskStatus {
         TODO,
         IN_PROGRESS,

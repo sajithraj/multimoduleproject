@@ -25,6 +25,7 @@ service/
 ## 🔧 Usage
 
 This module is a dependency for:
+
 - `taskService` - Main Lambda function
 - `token` - Authentication module (future)
 

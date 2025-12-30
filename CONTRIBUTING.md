@@ -1,6 +1,7 @@
 # Contributing to Task Service
 
-Thank you for your interest in contributing to the Task Service project! This document provides guidelines and instructions for contributing.
+Thank you for your interest in contributing to the Task Service project! This document provides guidelines and
+instructions for contributing.
 
 ---
 
@@ -27,12 +28,14 @@ We are committed to providing a welcoming and inclusive environment for all cont
 ### Our Standards
 
 **Positive behavior includes:**
+
 - Using welcoming and inclusive language
 - Being respectful of differing viewpoints
 - Gracefully accepting constructive criticism
 - Focusing on what is best for the community
 
 **Unacceptable behavior includes:**
+
 - Harassment, trolling, or derogatory comments
 - Public or private harassment
 - Publishing others' private information
@@ -128,9 +131,9 @@ We welcome various types of contributions:
 ### Contribution Workflow
 
 1. **Find or Create an Issue**
-   - Check existing issues
-   - Create new issue if needed
-   - Discuss approach before starting
+    - Check existing issues
+    - Create new issue if needed
+    - Discuss approach before starting
 
 2. **Create a Branch**
    ```bash
@@ -140,10 +143,10 @@ We welcome various types of contributions:
    ```
 
 3. **Make Changes**
-   - Write clean, readable code
-   - Follow coding standards
-   - Add/update tests
-   - Update documentation
+    - Write clean, readable code
+    - Follow coding standards
+    - Add/update tests
+    - Update documentation
 
 4. **Test Your Changes**
    ```powershell
@@ -169,10 +172,10 @@ We welcome various types of contributions:
    ```
 
 7. **Create Pull Request**
-   - Go to GitHub
-   - Click "New Pull Request"
-   - Fill in the template
-   - Wait for review
+    - Go to GitHub
+    - Click "New Pull Request"
+    - Fill in the template
+    - Wait for review
 
 ---
 
@@ -244,10 +247,10 @@ We welcome various types of contributions:
 - **Braces:** K&R style
 - **Imports:** Organize and remove unused
 - **Naming:**
-  - Classes: `PascalCase`
-  - Methods/Variables: `camelCase`
-  - Constants: `UPPER_SNAKE_CASE`
-  - Packages: `lowercase`
+    - Classes: `PascalCase`
+    - Methods/Variables: `camelCase`
+    - Constants: `UPPER_SNAKE_CASE`
+    - Packages: `lowercase`
 
 ### Package Structure
 
@@ -270,6 +273,7 @@ com.project.task/
 ### Test Structure
 
 **Use AAA pattern:**
+
 ```java
 @Test
 public void testFeature() {
@@ -315,11 +319,13 @@ public void testFeature() {
 ### Test Coverage
 
 **Minimum Requirements:**
+
 - **Unit Tests:** 80% coverage
 - **Integration Tests:** All major flows
 - **Edge Cases:** Error conditions, null checks, validation
 
 **Running Tests:**
+
 ```powershell
 # All tests
 mvn test
@@ -339,10 +345,12 @@ mvn verify -Pintegration-tests
 ```java
 // Good
 testApiGateway_CreateTask_Success()
+
 testSQS_InvalidMessage_ThrowsException()
 
 // Bad
 test1()
+
 testStuff()
 ```
 
@@ -353,6 +361,7 @@ testStuff()
 ### Before Submitting
 
 **Checklist:**
+
 - [ ] Code compiles without errors
 - [ ] All tests pass
 - [ ] New tests added for new features
@@ -432,6 +441,7 @@ git push origin main
 ### Examples
 
 **Good:**
+
 ```
 feat(api): add task update endpoint
 
@@ -452,6 +462,7 @@ Fixes #456
 ```
 
 **Bad:**
+
 ```
 updated stuff
 ```
@@ -570,14 +581,24 @@ public APIGatewayProxyResponseEvent processCreateTask(
 ### 4. Handle Errors Gracefully
 
 ```java
-try {
-    return processTask(task);
-} catch (ValidationException e) {
-    log.warn("Validation failed: {}", e.getMessage());
-    return createErrorResponse(400, "Invalid input");
-} catch (Exception e) {
-    log.error("Unexpected error", e);
-    return createErrorResponse(500, "Internal server error");
+try{
+        return processTask(task);
+}catch(
+ValidationException e){
+        log.
+
+warn("Validation failed: {}",e.getMessage());
+        return
+
+createErrorResponse(400,"Invalid input");
+}catch(
+Exception e){
+        log.
+
+error("Unexpected error",e);
+    return
+
+createErrorResponse(500,"Internal server error");
 }
 ```
 
@@ -593,11 +614,13 @@ try {
 ## 📚 Resources
 
 ### Project Documentation
+
 - [Main README](README.md)
 - [TaskService README](taskService/README.md)
 - [API Documentation](taskService/README.md#api-documentation)
 
 ### External Resources
+
 - [AWS Lambda Best Practices](https://docs.aws.amazon.com/lambda/latest/dg/best-practices.html)
 - [Java Coding Conventions](https://www.oracle.com/java/technologies/javase/codeconventions-contents.html)
 - [Effective Java](https://www.oreilly.com/library/view/effective-java/9780134686097/)

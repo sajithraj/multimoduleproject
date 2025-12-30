@@ -1,8 +1,5 @@
 package com.project.service.exception;
 
-/**
- * Custom exception for external API related errors.
- */
 public class ExternalApiException extends RuntimeException {
     public ExternalApiException(String message) {
         super(message);

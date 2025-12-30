@@ -7,6 +7,7 @@
 ## 📋 Overview
 
 This directory contains all infrastructure configuration:
+
 - **Terraform** - AWS resource provisioning
 - **Docker** - LocalStack for local development
 
@@ -39,12 +40,14 @@ infra/
 ### LocalStack Deployment
 
 **1. Start LocalStack:**
+
 ```powershell
 cd docker
 docker-compose up -d
 ```
 
 **2. Deploy Infrastructure:**
+
 ```powershell
 cd terraform
 terraform init
@@ -52,6 +55,7 @@ terraform apply -var="use_localstack=true" -auto-approve
 ```
 
 **3. Verify:**
+
 ```powershell
 # Check Lambda
 aws lambda list-functions --endpoint-url http://localhost:4566
@@ -64,14 +68,16 @@ Write-Host $apiUrl
 ### AWS Deployment
 
 **1. Configure Variables:**
+
 ```hcl
 # terraform/terraform.tfvars
 use_localstack = false
-aws_region = "us-east-1"
-environment = "prod"
+aws_region     = "us-east-1"
+environment    = "prod"
 ```
 
 **2. Deploy:**
+
 ```powershell
 cd terraform
 terraform init
@@ -86,6 +92,7 @@ terraform apply
 See [docker/README.md](docker/README.md) for details.
 
 **Quick Commands:**
+
 ```powershell
 # Start
 docker-compose up -d
@@ -107,6 +114,7 @@ docker-compose restart
 See [terraform/README.md](terraform/README.md) for details.
 
 **Resources Created:**
+
 - Lambda Function (`task-service-dev`)
 - API Gateway (REST API)
 - SQS Queue (`task-queue`)
@@ -115,6 +123,7 @@ See [terraform/README.md](terraform/README.md) for details.
 - CloudWatch Log Groups
 
 **Key Files:**
+
 - `main.tf` - Resource definitions
 - `terraform.tfvars` - AWS configuration
 - `terraform.localstack.tfvars` - LocalStack configuration
@@ -125,14 +134,15 @@ See [terraform/README.md](terraform/README.md) for details.
 
 Located in `terraform/scripts/`:
 
-| Script | Purpose |
-|--------|---------|
-| `setup-dlq.ps1` | Configure SQS DLQ and event source mapping |
-| `check-sqs-queue.ps1` | View queue status and messages |
-| `view-dlq.ps1` | View failed messages in DLQ |
-| `test-sqs-failures.ps1` | Test SQS failure scenarios |
+| Script                  | Purpose                                    |
+|-------------------------|--------------------------------------------|
+| `setup-dlq.ps1`         | Configure SQS DLQ and event source mapping |
+| `check-sqs-queue.ps1`   | View queue status and messages             |
+| `view-dlq.ps1`          | View failed messages in DLQ                |
+| `test-sqs-failures.ps1` | Test SQS failure scenarios                 |
 
 **Usage:**
+
 ```powershell
 cd terraform/scripts
 .\setup-dlq.ps1
@@ -155,6 +165,7 @@ outputs = {
 ```
 
 **Access outputs:**
+
 ```powershell
 cd terraform
 terraform output
@@ -165,6 +176,7 @@ terraform output
 ## 🧹 Cleanup
 
 ### LocalStack
+
 ```powershell
 # Destroy infrastructure
 cd terraform
@@ -176,6 +188,7 @@ docker-compose down
 ```
 
 ### AWS
+
 ```powershell
 cd terraform
 terraform destroy
@@ -186,6 +199,7 @@ terraform destroy
 ## 🔍 Troubleshooting
 
 ### Issue: LocalStack not starting
+
 ```powershell
 cd docker
 docker-compose down
@@ -194,6 +208,7 @@ docker-compose logs -f
 ```
 
 ### Issue: Terraform fails
+
 ```powershell
 # Reinitialize
 terraform init -upgrade
@@ -206,6 +221,7 @@ terraform refresh -var="use_localstack=true"
 ```
 
 ### Issue: Resources not created
+
 ```powershell
 # Check LocalStack
 docker ps | Select-String localstack

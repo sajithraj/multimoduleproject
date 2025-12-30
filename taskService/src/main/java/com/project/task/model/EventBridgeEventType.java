@@ -1,26 +1,13 @@
 package com.project.task.model;
 
-/**
- * Types of EventBridge events supported.
- */
+import lombok.Getter;
+
+@Getter
 public enum EventBridgeEventType {
-    /**
-     * Scheduled tasks triggered by CloudWatch Events (cron/rate expressions).
-     * Example: Daily reports, cleanup jobs
-     */
-    SCHEDULED_TASK("Scheduled Task"),
 
-    /**
-     * Custom business events from our application.
-     * Example: OrderCreated, PaymentProcessed, UserRegistered
-     */
-    CUSTOM_BUSINESS_EVENT("Custom Business Event"),
+    SCHEDULED_EVENT("Scheduled Task"),
 
-    /**
-     * AWS system events.
-     * Example: EC2 state changes, S3 events, CloudWatch alarms
-     */
-    SYSTEM_EVENT("System Event");
+    CUSTOM_EVENT("Custom Business Event");
 
     private final String displayName;
 
@@ -28,8 +15,4 @@ public enum EventBridgeEventType {
         this.displayName = displayName;
     }
 
-    public String getDisplayName() {
-        return displayName;
-    }
 }
-

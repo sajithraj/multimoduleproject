@@ -1,14 +1,13 @@
 package com.project.task.model;
 
-/**
- * Enum representing different types of event sources.
- */
+import lombok.Getter;
+
+@Getter
 public enum EventSourceType {
+
     API_GATEWAY("API Gateway"),
     SQS("SQS"),
-    EVENTBRIDGE("EventBridge"),
-    EVENT_BRIDGE("EventBridge"),  // Alias for EVENTBRIDGE
-    UNKNOWN("Unknown");
+    EVENT_BRIDGE("EventBridge");
 
     private final String displayName;
 
@@ -16,8 +15,5 @@ public enum EventSourceType {
         this.displayName = displayName;
     }
 
-    public String getDisplayName() {
-        return displayName;
-    }
 }
 

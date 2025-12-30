@@ -1,12 +1,13 @@
 package com.project.task.model;
 
-/**
- * Enum representing different types of Lambda invocations.
- */
+import lombok.Getter;
+
+@Getter
 public enum InvocationType {
     API_GATEWAY("API Gateway"),
     SQS("SQS"),
-    EVENT_BRIDGE("EventBridge");
+    EVENT_BRIDGE_SCHEDULED("EventBridge Scheduled Event"),
+    EVENT_BRIDGE_CUSTOM("EventBridge Custom Event");
 
     private final String displayName;
 
@@ -14,8 +15,5 @@ public enum InvocationType {
         this.displayName = displayName;
     }
 
-    public String getDisplayName() {
-        return displayName;
-    }
 }
 

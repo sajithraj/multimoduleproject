@@ -14,7 +14,7 @@ import static org.junit.Assert.*;
 
 /**
  * Test SQS Event Deserialization
- * Validates that the EventDeserializer can properly handle SQS events
+ * Validates that the EventDeserializer can properly route SQS events
  */
 public class SQSEventDeserializationTest {
 

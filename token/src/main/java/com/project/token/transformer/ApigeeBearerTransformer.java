@@ -27,9 +27,6 @@ import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.Base64;
 
-/**
- * ApigeeBearerTransformer extends BasicTransformer (required for Powertools v2 String transformation).
- */
 public class ApigeeBearerTransformer extends BasicTransformer {
 
     private static final Logger log = LogManager.getLogger(ApigeeBearerTransformer.class);
@@ -55,14 +52,14 @@ public class ApigeeBearerTransformer extends BasicTransformer {
 
             try (InputStream fis = this.getClass().getResourceAsStream(filename);
                  InputStream inputStream =
-                         this.getClass().getResourceAsStream("/svb_root_ssl_cert.pem");
+                         this.getClass().getResourceAsStream("/root_ssl_cert.pem");
                  FileOutputStream fos =
                          new FileOutputStream(TRUST_STORE_LOCATION)) {
 
                 ks.load(fis, "".toCharArray());
 
                 ks.setCertificateEntry(
-                        "svbRoot",
+                        "Root",
                         CertificateFactory.getInstance("X.509")
                                 .generateCertificate(inputStream)
                 );

@@ -7,6 +7,7 @@
 ## 📋 Overview
 
 Terraform configuration to provision:
+
 - AWS Lambda Function
 - API Gateway REST API
 - SQS Queues (Main + DLQ)
@@ -51,13 +52,13 @@ terraform output
 
 ## 📁 Files
 
-| File | Purpose |
-|------|---------|
-| `main.tf` | Main Terraform configuration |
-| `terraform.tfvars` | AWS environment variables |
-| `terraform.localstack.tfvars` | LocalStack variables |
-| `terraform.tfstate` | State file (auto-generated) |
-| `.terraform.lock.hcl` | Dependency lock file |
+| File                          | Purpose                      |
+|-------------------------------|------------------------------|
+| `main.tf`                     | Main Terraform configuration |
+| `terraform.tfvars`            | AWS environment variables    |
+| `terraform.localstack.tfvars` | LocalStack variables         |
+| `terraform.tfstate`           | State file (auto-generated)  |
+| `.terraform.lock.hcl`         | Dependency lock file         |
 
 ---
 
@@ -66,24 +67,27 @@ terraform output
 ### Variables
 
 **terraform.tfvars (AWS):**
+
 ```hcl
 use_localstack = false
-aws_region = "us-east-1"
-environment = "prod"
+aws_region     = "us-east-1"
+environment    = "prod"
 lambda_timeout = 30
-lambda_memory = 512
+lambda_memory  = 512
 ```
 
 **terraform.localstack.tfvars (LocalStack):**
+
 ```hcl
 use_localstack = true
-aws_region = "us-east-1"
-environment = "dev"
+aws_region     = "us-east-1"
+environment    = "dev"
 ```
 
 ### Resources Created
 
 **Lambda Function:**
+
 - Name: `task-service-{env}`
 - Runtime: `java21`
 - Handler: `com.project.task.handler.UnifiedTaskHandler::handleRequest`
@@ -91,18 +95,21 @@ environment = "dev"
 - Timeout: 30 seconds
 
 **API Gateway:**
+
 - Type: REST API
 - Stage: `dev`
 - CORS: Enabled
 - Endpoints: 6 (GET, POST, PUT, DELETE)
 
 **SQS:**
+
 - Main Queue: `task-queue`
 - DLQ: `task-queue-dlq`
 - Max Receive Count: 3
 - Visibility Timeout: 30 seconds
 
 **IAM:**
+
 - Lambda Execution Role
 - Policies: CloudWatch Logs, SQS, EventBridge
 
@@ -129,13 +136,13 @@ output "sqs_dlq_url" {
 ```
 
 **View outputs:**
+
 ```powershell
 terraform output
 terraform output -json
 ```
 
 ---
-
 
 ## 🔄 Terraform Commands
 
@@ -274,11 +281,13 @@ Remove-Item -Recurse .terraform
 ## 🔐 Security Notes
 
 **State Files:**
+
 - `.tfstate` contains sensitive data
 - Added to `.gitignore`
 - Use remote state backend for production
 
 **Credentials:**
+
 - Never hardcode AWS credentials
 - Use environment variables or AWS CLI profiles
 - For LocalStack, any dummy credentials work

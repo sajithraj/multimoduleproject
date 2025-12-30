@@ -6,9 +6,6 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-/**
- * JSON utility for serialization and deserialization.
- */
 public final class JsonUtil {
 
     private static final Logger log = LogManager.getLogger(JsonUtil.class);
@@ -19,16 +16,8 @@ public final class JsonUtil {
     }
 
     private JsonUtil() {
-        // Utility class - prevent instantiation
     }
 
-    /**
-     * Convert object to JSON string.
-     *
-     * @param obj The object to serialize
-     * @return JSON string
-     * @throws RuntimeException if serialization fails
-     */
     public static String toJson(Object obj) {
         try {
             return MAPPER.writeValueAsString(obj);
@@ -38,15 +27,6 @@ public final class JsonUtil {
         }
     }
 
-    /**
-     * Parse JSON string to object.
-     *
-     * @param json  The JSON string
-     * @param clazz The target class
-     * @param <T>   The type
-     * @return Deserialized object
-     * @throws RuntimeException if deserialization fails
-     */
     public static <T> T fromJson(String json, Class<T> clazz) {
         try {
             return MAPPER.readValue(json, clazz);
@@ -56,11 +36,6 @@ public final class JsonUtil {
         }
     }
 
-    /**
-     * Get the ObjectMapper instance.
-     *
-     * @return ObjectMapper
-     */
     public static ObjectMapper getMapper() {
         return MAPPER;
     }

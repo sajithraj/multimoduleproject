@@ -13,28 +13,17 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
-/**
- * ApiGatewayTaskService - Handles all API Gateway requests
- * REST API operations: GET, POST, PUT, DELETE
- */
 @Slf4j
 public class ApiGatewayTaskService {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final TaskMapper TASK_MAPPER = TaskMapper.INSTANCE;
 
-    /**
-     * Safely get request ID from context
-     */
     private String getRequestId(Context context) {
         return context != null ? context.getAwsRequestId() : "unknown-request-id";
     }
 
-    /**
-     * Build standardized API response
-     */
     private APIGatewayProxyResponseEvent buildApiResponseWithData(int statusCode, Map<String, Object> data) {
         try {
             APIGatewayProxyResponseEvent response = new APIGatewayProxyResponseEvent();
@@ -55,9 +44,6 @@ public class ApiGatewayTaskService {
         }
     }
 
-    /**
-     * Build error response
-     */
     private APIGatewayProxyResponseEvent buildErrorResponse(int statusCode, String message) {
         Map<String, Object> error = new HashMap<>();
         error.put("error", message);
@@ -66,33 +52,16 @@ public class ApiGatewayTaskService {
         return buildApiResponseWithData(statusCode, error);
     }
 
-    // ========================================
-    // API Gateway Endpoints
-    // ========================================
-
-    /**
-     * Handle /ping endpoint - Health check
-     */
     public APIGatewayProxyResponseEvent processPing(
             APIGatewayProxyRequestEvent event,
             Context context) {
 
         log.info("Processing GET /ping health check");
 
-        Map<String, Object> response = new HashMap<>();
-        response.put("service", "task-service");
-        response.put("requestId", getRequestId(context));
-        response.put("version", "1.0.0");
-        response.put("status", "healthy");
-        response.put("timestamp", System.currentTimeMillis());
-        response.put("message", "GET /ping successfully invoked");
-
+        Map<String, Object> response = buildStandardResponse(context, "healthy", "GET /ping successfully invoked");
         return buildApiResponseWithData(200, response);
     }
 
-    /**
-     * Handle GET /task - Get all tasks
-     */
     public APIGatewayProxyResponseEvent processGetAllTasks(
             APIGatewayProxyRequestEvent event,
             Context context) {
@@ -102,22 +71,12 @@ public class ApiGatewayTaskService {
         List<Task> tasks = TaskData.getAllTasks();
         log.info("Retrieved {} tasks from store", tasks.size());
 
-        Map<String, Object> response = new HashMap<>();
-        response.put("service", "task-service");
-        response.put("requestId", getRequestId(context));
-        response.put("version", "1.0.0");
-        response.put("status", "success");
-        response.put("timestamp", System.currentTimeMillis());
-        response.put("message", "GET /task successfully invoked");
+        Map<String, Object> response = buildStandardResponse(context, "success", "GET /task successfully invoked");
         response.put("count", tasks.size());
         response.put("data", tasks);
-
         return buildApiResponseWithData(200, response);
     }
 
-    /**
-     * Handle GET /task/{id} - Get task by ID
-     */
     public APIGatewayProxyResponseEvent processGetTaskById(
             APIGatewayProxyRequestEvent event,
             Context context) {
@@ -140,21 +99,11 @@ public class ApiGatewayTaskService {
 
         log.info("Found task: {}", task.getName());
 
-        Map<String, Object> response = new HashMap<>();
-        response.put("service", "task-service");
-        response.put("requestId", getRequestId(context));
-        response.put("version", "1.0.0");
-        response.put("status", "success");
-        response.put("timestamp", System.currentTimeMillis());
-        response.put("message", "GET /task/" + id + " successfully invoked");
+        Map<String, Object> response = buildStandardResponse(context, "success", "GET /task/" + id + " successfully invoked");
         response.put("data", task);
-
         return buildApiResponseWithData(200, response);
     }
 
-    /**
-     * Handle POST /task - Create new task
-     */
     public APIGatewayProxyResponseEvent processCreateTask(
             APIGatewayProxyRequestEvent event,
             Context context) {
@@ -169,31 +118,15 @@ public class ApiGatewayTaskService {
         log.debug("Request body: {}", requestBody);
 
         try {
-            // Parse request DTO
             TaskRequestDTO requestDTO = OBJECT_MAPPER.readValue(requestBody, TaskRequestDTO.class);
 
-            // Map DTO to Entity
             Task newTask = TASK_MAPPER.toEntity(requestDTO);
-
-            // Generate ID if not provided
-            if (newTask.getId() == null || newTask.getId().isEmpty()) {
-                newTask.setId(UUID.randomUUID().toString());
-            }
-
-            // Save task
             TaskData.saveTask(newTask);
 
             log.info("Created new task with ID: {}, name: {}", newTask.getId(), newTask.getName());
 
-            Map<String, Object> response = new HashMap<>();
-            response.put("service", "task-service");
-            response.put("requestId", getRequestId(context));
-            response.put("version", "1.0.0");
-            response.put("status", "success");
-            response.put("timestamp", System.currentTimeMillis());
-            response.put("message", "POST /task successfully invoked");
+            Map<String, Object> response = buildStandardResponse(context, "success", "POST /task successfully invoked");
             response.put("data", newTask);
-
             return buildApiResponseWithData(201, response);
 
         } catch (Exception e) {
@@ -202,9 +135,6 @@ public class ApiGatewayTaskService {
         }
     }
 
-    /**
-     * Handle PUT /task/{id} - Update task
-     */
     public APIGatewayProxyResponseEvent processUpdateTask(
             APIGatewayProxyRequestEvent event,
             Context context) {
@@ -225,44 +155,23 @@ public class ApiGatewayTaskService {
 
         log.debug("Update payload: {}", requestBody);
 
-        // Check if task exists
-        Task existingTask = TaskData.getTaskById(id);
-        if (existingTask == null) {
+        if (!TaskData.taskExists(id)) {
             return buildErrorResponse(404, "Task not found: " + id);
         }
 
         try {
-            // Parse update request
-            Map<String, Object> updates = OBJECT_MAPPER.readValue(requestBody, Map.class);
+            Task existingTask = TaskData.getTaskById(id);
+            TaskRequestDTO updateDTO = OBJECT_MAPPER.readValue(requestBody, TaskRequestDTO.class);
 
-            // Apply updates - only essential fields
-            if (updates.containsKey("name")) {
-                existingTask.setName((String) updates.get("name"));
-            }
-            if (updates.containsKey("description")) {
-                existingTask.setDescription((String) updates.get("description"));
-            }
-            if (updates.containsKey("status")) {
-                existingTask.setStatus(Task.TaskStatus.valueOf(((String) updates.get("status")).toUpperCase()));
-            }
-
-            // Update timestamp
+            TASK_MAPPER.updateEntityFromDto(updateDTO, existingTask);
             existingTask.setUpdatedAt(System.currentTimeMillis());
 
-            // Save updated task
             TaskData.saveTask(existingTask);
 
             log.info("Updated task: {}", existingTask.getName());
 
-            Map<String, Object> response = new HashMap<>();
-            response.put("service", "task-service");
-            response.put("requestId", getRequestId(context));
-            response.put("version", "1.0.0");
-            response.put("status", "success");
-            response.put("timestamp", System.currentTimeMillis());
-            response.put("message", "PUT /task/" + id + " successfully invoked");
+            Map<String, Object> response = buildStandardResponse(context, "success", "PUT /task/" + id + " successfully invoked");
             response.put("data", existingTask);
-
             return buildApiResponseWithData(200, response);
 
         } catch (IllegalArgumentException e) {
@@ -274,9 +183,6 @@ public class ApiGatewayTaskService {
         }
     }
 
-    /**
-     * Handle DELETE /task/{id} - Delete task
-     */
     public APIGatewayProxyResponseEvent processDeleteTask(
             APIGatewayProxyRequestEvent event,
             Context context) {
@@ -299,16 +205,20 @@ public class ApiGatewayTaskService {
 
         log.info("Deleted task: {} (ID: {})", deletedTask.getName(), id);
 
+        Map<String, Object> response = buildStandardResponse(context, "success", "DELETE /task/" + id + " successfully invoked");
+        response.put("data", deletedTask);
+        return buildApiResponseWithData(200, response);
+    }
+
+    private Map<String, Object> buildStandardResponse(Context context, String status, String message) {
         Map<String, Object> response = new HashMap<>();
         response.put("service", "task-service");
         response.put("requestId", getRequestId(context));
         response.put("version", "1.0.0");
-        response.put("status", "success");
+        response.put("status", status);
         response.put("timestamp", System.currentTimeMillis());
-        response.put("message", "DELETE /task/" + id + " successfully invoked");
-        response.put("data", deletedTask);
-
-        return buildApiResponseWithData(200, response);
+        response.put("message", message);
+        return response;
     }
-}
 
+}

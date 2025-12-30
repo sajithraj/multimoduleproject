@@ -7,6 +7,7 @@
 ## 📋 Overview
 
 This module will handle:
+
 - OAuth token generation
 - JWT validation
 - API authentication
@@ -18,6 +19,7 @@ This module will handle:
 
 **Currently:** Placeholder  
 **Planned Features:**
+
 - OAuth 2.0 integration
 - JWT token handling
 - API key management

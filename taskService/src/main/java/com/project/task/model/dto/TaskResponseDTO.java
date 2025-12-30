@@ -6,10 +6,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/**
- * Task Response DTO
- * Contains all fields to be returned to client
- */
 @Data
 @Builder
 @NoArgsConstructor

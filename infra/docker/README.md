@@ -6,7 +6,8 @@
 
 ## 📋 Overview
 
-This directory contains Docker configuration for running LocalStack, which provides a local AWS cloud stack for development and testing without incurring AWS costs.
+This directory contains Docker configuration for running LocalStack, which provides a local AWS cloud stack for
+development and testing without incurring AWS costs.
 
 ---
 
@@ -42,12 +43,12 @@ docker-compose down -v
 
 ## 📁 Files
 
-| File | Purpose |
-|------|---------|
-| `docker-compose.yml` | Docker Compose configuration for LocalStack |
-| `init-aws.sh` | Initialization script for AWS resources |
-| `localstack-helper.sh` | Helper script for LocalStack operations (Linux/Mac) |
-| `localstack-helper.bat` | Helper script for LocalStack operations (Windows) |
+| File                    | Purpose                                             |
+|-------------------------|-----------------------------------------------------|
+| `docker-compose.yml`    | Docker Compose configuration for LocalStack         |
+| `init-aws.sh`           | Initialization script for AWS resources             |
+| `localstack-helper.sh`  | Helper script for LocalStack operations (Linux/Mac) |
+| `localstack-helper.bat` | Helper script for LocalStack operations (Windows)   |
 
 ---
 
@@ -56,11 +57,13 @@ docker-compose down -v
 ### docker-compose.yml
 
 **Services:**
+
 - LocalStack container
 - Port 4566 exposed for AWS API
 - Configured AWS services: Lambda, Secrets Manager, CloudWatch Logs, IAM, API Gateway, SQS, EventBridge
 
 **Environment Variables:**
+
 ```yaml
 - DEBUG=0
 - DOCKER_HOST=unix:///var/run/docker.sock
@@ -71,6 +74,7 @@ docker-compose down -v
 ```
 
 **Enabled Services:**
+
 - Lambda
 - Secrets Manager
 - CloudWatch Logs
@@ -133,6 +137,7 @@ curl http://localhost:4566/_localstack/health
 ### Lambda Execution Issues
 
 Ensure Docker socket is mounted correctly:
+
 - Windows: Docker Desktop must be running
 - Linux/Mac: /var/run/docker.sock must be accessible
 
@@ -180,6 +185,7 @@ docker rmi localstack/localstack:latest
 ## 📚 LocalStack Features
 
 **Free Tier Includes:**
+
 - Lambda
 - API Gateway
 - SQS
@@ -190,6 +196,7 @@ docker rmi localstack/localstack:latest
 - And more...
 
 **Pro Features (Not Required):**
+
 - Advanced Lambda features
 - EKS
 - RDS

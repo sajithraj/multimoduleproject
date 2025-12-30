@@ -7,6 +7,7 @@
 ## 📋 Overview
 
 This module contains the main Lambda function (`UnifiedTaskHandler`) that:
+
 - Processes REST API requests via API Gateway
 - Handles SQS messages with batch processing and DLQ support
 - Processes EventBridge scheduled and custom events
@@ -90,11 +91,13 @@ mvn clean package -DskipTests -pl taskService
 ## 🧪 Testing
 
 ### Run All Tests
+
 ```powershell
 mvn test -pl taskService
 ```
 
 ### Run Specific Test Class
+
 ```powershell
 mvn test -pl taskService -Dtest=ApiGatewayIntegrationTest
 mvn test -pl taskService -Dtest=SqsIntegrationTest
@@ -102,6 +105,7 @@ mvn test -pl taskService -Dtest=EventBridgeIntegrationTest
 ```
 
 ### Test Coverage
+
 ```
 Tests run: 31, Failures: 0, Errors: 0, Skipped: 0
 - API Gateway: 11 tests
@@ -115,11 +119,13 @@ Tests run: 31, Failures: 0, Errors: 0, Skipped: 0
 ## 📊 API Gateway Endpoints
 
 ### 1. Health Check
+
 ```http
 GET /ping
 ```
 
 **Response:**
+
 ```json
 {
   "service": "task-service",
@@ -132,11 +138,13 @@ GET /ping
 ```
 
 ### 2. Get All Tasks
+
 ```http
 GET /task
 ```
 
 **Response:**
+
 ```json
 {
   "service": "task-service",
@@ -148,11 +156,13 @@ GET /task
 ```
 
 ### 3. Get Task by ID
+
 ```http
 GET /task/{id}
 ```
 
 **Response (200):**
+
 ```json
 {
   "service": "task-service",
@@ -170,6 +180,7 @@ GET /task/{id}
 ```
 
 **Response (404):**
+
 ```json
 {
   "service": "task-service",
@@ -180,6 +191,7 @@ GET /task/{id}
 ```
 
 ### 4. Create Task
+
 ```http
 POST /task
 Content-Type: application/json
@@ -192,6 +204,7 @@ Content-Type: application/json
 ```
 
 **Response (201):**
+
 ```json
 {
   "service": "task-service",
@@ -208,6 +221,7 @@ Content-Type: application/json
 ```
 
 **Response (400) - Validation Error:**
+
 ```json
 {
   "service": "task-service",
@@ -218,6 +232,7 @@ Content-Type: application/json
 ```
 
 ### 5. Update Task
+
 ```http
 PUT /task/{id}
 Content-Type: application/json
@@ -230,6 +245,7 @@ Content-Type: application/json
 ```
 
 **Response (200):**
+
 ```json
 {
   "service": "task-service",
@@ -245,11 +261,13 @@ Content-Type: application/json
 ```
 
 ### 6. Delete Task
+
 ```http
 DELETE /task/{id}
 ```
 
 **Response (200):**
+
 ```json
 {
   "service": "task-service",
@@ -267,6 +285,7 @@ DELETE /task/{id}
 ## 📨 SQS Integration
 
 ### Message Format
+
 ```json
 {
   "name": "Task Name",
@@ -276,6 +295,7 @@ DELETE /task/{id}
 ```
 
 ### Features
+
 - ✅ Batch processing (up to 10 messages)
 - ✅ Partial batch failure support (`ReportBatchItemFailures`)
 - ✅ Dead Letter Queue (DLQ) for failed messages
@@ -283,6 +303,7 @@ DELETE /task/{id}
 - ✅ Validation and error handling
 
 ### Send Message
+
 ```powershell
 aws sqs send-message \
   --queue-url http://localhost:4566/000000000000/task-queue \
@@ -292,6 +313,7 @@ aws sqs send-message \
 ```
 
 ### Batch Response
+
 ```json
 {
   "batchItemFailures": [
@@ -303,6 +325,7 @@ aws sqs send-message \
 ```
 
 ### Check DLQ
+
 ```powershell
 aws sqs receive-message \
   --queue-url http://localhost:4566/000000000000/task-queue-dlq \
@@ -317,6 +340,7 @@ aws sqs receive-message \
 ### 1. Scheduled Events
 
 **Event:**
+
 ```json
 {
   "id": "scheduled-123",
@@ -332,6 +356,7 @@ aws sqs receive-message \
 ### 2. Custom Events
 
 **Event:**
+
 ```json
 {
   "id": "custom-456",
@@ -349,6 +374,7 @@ aws sqs receive-message \
 **Result:** Creates task from detail fields
 
 ### Test EventBridge
+
 ```powershell
 # Scheduled event
 $event = '{"id":"test-123","source":"aws.events","detail-type":"Scheduled Event","time":"2025-12-30T10:00:00Z","detail":{}}'
@@ -428,19 +454,23 @@ Key dependencies (defined in `pom.xml`):
 ## 📊 Performance Optimizations
 
 ### 1. Jackson MixIn for SQS Deserialization
+
 - **Problem:** `Records` field case mismatch
 - **Solution:** Dedicated ObjectMapper with MixIn
 - **Result:** 60-70% performance improvement
 
 ### 2. MapStruct for DTO Mapping
+
 - **Benefit:** Compile-time code generation
 - **Result:** Type-safe, fast conversions
 
 ### 3. ConcurrentHashMap for Data Store
+
 - **Benefit:** Thread-safe without synchronization overhead
 - **Result:** Concurrent read/write support
 
 ### 4. Lombok Code Generation
+
 - **Benefit:** Reduces boilerplate by 40%
 - **Result:** Cleaner, maintainable code
 
