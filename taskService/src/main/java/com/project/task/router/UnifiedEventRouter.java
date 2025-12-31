@@ -3,11 +3,13 @@ package com.project.task.router;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.events.*;
 import com.project.task.model.EventDetectionResult;
+import com.project.task.model.EventbridgeInvocationType;
 import com.project.task.model.InvocationType;
 import com.project.task.service.ApiGatewayTaskService;
 import com.project.task.service.ApiGatewayTaskServiceHandler;
 import com.project.task.service.EventBridgeTaskService;
 import com.project.task.service.SQSTaskService;
+import com.project.task.util.EventbridgeInvocationTypeDetector;
 import com.project.task.util.InvocationTypeDetector;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -32,8 +34,7 @@ public class UnifiedEventRouter {
         return switch (type) {
             case API_GATEWAY -> handleApiGateway((APIGatewayProxyRequestEvent) event, context);
             case SQS -> handleSqs((SQSEvent) event, context);
-            case EVENT_BRIDGE_SCHEDULED -> handleEventBridgeScheduled((ScheduledEvent) event, context);
-            case EVENT_BRIDGE_CUSTOM -> handleEventBridgeCustom((ScheduledEvent) event, context);
+            case EVENT_BRIDGE -> handleEventBridge((ScheduledEvent) event, context);
         };
     }
 
@@ -56,18 +57,15 @@ public class UnifiedEventRouter {
         return SQS_SERVICE.processSQSMessages(event, context);
     }
 
-    private String handleEventBridgeScheduled(ScheduledEvent event, Context context) {
+    private String handleEventBridge(ScheduledEvent event, Context context) {
         log.info("Handling EventBridge Scheduled Event: source={}, detailType={}",
                 event.getSource(), event.getDetailType());
-
-        return EB_SERVICE.processScheduledEvent(event, context);
-    }
-
-    private String handleEventBridgeCustom(ScheduledEvent event, Context context) {
-        log.info("Handling EventBridge Custom Event: source={}, detailType={}",
-                event.getSource(), event.getDetailType());
-
-        return EB_SERVICE.processCustomEvent(event, context);
+        EventbridgeInvocationType type = EventbridgeInvocationTypeDetector.detectEventBridgeType(event.getSource(), event.getDetailType());
+        return switch (type) {
+            case EVENT_BRIDGE_SCHEDULED_EVENT -> EB_SERVICE.processScheduledEvent(event, context);
+            case EVENT_BRIDGE_CUSTOM_EVENT -> EB_SERVICE.processCustomEvent(event, context);
+            case EVENT_BRIDGE_S3_EVENT -> EB_SERVICE.processS3Event(event, context);
+        };
     }
 
 }

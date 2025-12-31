@@ -14,6 +14,13 @@ public class ApiGatewayTaskServiceHandler {
     private static final Logger log = LogManager.getLogger(ApiGatewayTaskServiceHandler.class);
     private final ApiGatewayTaskService taskService;
 
+    private static final java.util.Map<String, String> DEFAULT_HEADERS = java.util.Collections.unmodifiableMap(new java.util.HashMap<>() {{
+        put("Content-Type", "application/json");
+        put("Access-Control-Allow-Origin", "*");
+        put("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
+        put("Access-Control-Allow-Headers", "Content-Type,Authorization");
+    }});
+
     public ApiGatewayTaskServiceHandler(ApiGatewayTaskService taskService) {
         this.taskService = taskService;
     }
@@ -86,16 +93,9 @@ public class ApiGatewayTaskServiceHandler {
         String id = path.substring(path.lastIndexOf('/') + 1);
         log.info("Handling {} /task/{{id}} request, id={}", method, id);
 
-        // Override with path parameters if available
-        Map<String, String> pathParams = event.getPathParameters();
-        if (pathParams != null && pathParams.containsKey("id")) {
-            id = pathParams.get("id");
-        }
-
         return switch (method) {
             case "GET" -> taskService.processGetTaskById(event, context);
             case "PUT" -> {
-                // Validate body for PUT
                 if (event.getBody() == null || event.getBody().isEmpty()) {
                     yield buildErrorResponse(400, "Request body is required");
                 }
@@ -107,7 +107,7 @@ public class ApiGatewayTaskServiceHandler {
     }
 
     private APIGatewayProxyResponseEvent handleNotFound(String path, String method) {
-        log.warn("No route found for: {} {}", method, path);
+        log.warn("No route found for request: {} {}", method, path);
 
         Map<String, Object> errorBody = new HashMap<>();
         errorBody.put("service", "task-service");
@@ -135,15 +135,9 @@ public class ApiGatewayTaskServiceHandler {
     }
 
     private APIGatewayProxyResponseEvent buildResponse(int statusCode, Object body) {
-        Map<String, String> headers = new HashMap<>();
-        headers.put("Content-Type", "application/json");
-        headers.put("Access-Control-Allow-Origin", "*");
-        headers.put("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
-        headers.put("Access-Control-Allow-Headers", "Content-Type,Authorization");
-
         return new APIGatewayProxyResponseEvent()
                 .withStatusCode(statusCode)
-                .withHeaders(headers)
+                .withHeaders(DEFAULT_HEADERS)
                 .withBody(com.project.task.util.JsonUtil.toJson(body));
     }
 

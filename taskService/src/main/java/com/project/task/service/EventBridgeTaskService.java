@@ -20,7 +20,7 @@ public class EventBridgeTaskService {
     private static final TaskMapper TASK_MAPPER = TaskMapper.INSTANCE;
 
     public String processScheduledEvent(ScheduledEvent event, Context context) {
-        log.info("📅 Processing scheduled event: id={}", event.getId());
+        log.info("Processing scheduled EventBridge event: id={}", event.getId());
 
         try {
             String taskId = UUID.randomUUID().toString();
@@ -47,13 +47,13 @@ public class EventBridgeTaskService {
     }
 
     public String processCustomEvent(ScheduledEvent event, Context context) {
-        log.info("Processing custom event: detailType={}, id={}", event.getDetailType(), event.getId());
+        log.info("Processing EventBridge custom event: detailType={}, id={}", event.getDetailType(), event.getId());
 
         try {
             Map<String, Object> detail = event.getDetail();
 
             if (detail == null || detail.isEmpty()) {
-                log.warn("Custom event has empty detail - skipping");
+                log.warn("Custom event detail is empty; skipping");
                 return "SKIPPED";
             }
 
@@ -71,7 +71,7 @@ public class EventBridgeTaskService {
 
             TaskData.saveTask(task);
 
-            log.info("Custom event task created: id={}, name={}, detailType={}",
+            log.info("Custom event task created: id={}, name={}, detailType={} ",
                     task.getId(), task.getName(), event.getDetailType());
 
             return "OK";
@@ -82,6 +82,33 @@ public class EventBridgeTaskService {
         } catch (Exception e) {
             log.error("Error processing custom event: {}", e.getMessage(), e);
             throw new RuntimeException("Custom event processing failed: " + e.getMessage(), e);
+        }
+    }
+
+    public String processS3Event(ScheduledEvent event, Context context) {
+        log.info("Processing S3/EventBridge event: id={}", event.getId());
+
+        try {
+            String taskId = UUID.randomUUID().toString();
+            String taskName = "scheduled event " + event.getId();
+
+            Task task = Task.builder()
+                    .id(taskId)
+                    .name(taskName)
+                    .description("Automatically created from S3 event at " + Instant.now())
+                    .status(Task.TaskStatus.TODO)
+                    .createdAt(Instant.now().toEpochMilli())
+                    .updatedAt(Instant.now().toEpochMilli())
+                    .build();
+
+            TaskData.saveTask(task);
+
+            log.info("S3 event task created: id={}, name={}", taskId, taskName);
+            return "OK";
+
+        } catch (Exception e) {
+            log.error("Error processing S3 event task: {}", e.getMessage(), e);
+            throw new RuntimeException("S3 event  failed: " + e.getMessage(), e);
         }
     }
 

@@ -23,7 +23,7 @@ public class SQSTaskService {
         List<SQSEvent.SQSMessage> records = event.getRecords();
         int totalMessages = records.size();
 
-        log.info("Processing SQS batch: {} messages", totalMessages);
+        log.info("Processing SQS batch of {} messages", totalMessages);
 
         List<SQSBatchResponse.BatchItemFailure> failures = new ArrayList<>();
         int successCount = 0;
@@ -33,9 +33,9 @@ public class SQSTaskService {
             String messageId = message.getMessageId();
 
             try {
-                log.debug("Processing SQS message: messageId={}", messageId);
+                log.debug("Processing message: messageId={}", messageId);
 
-                processMessage(message, context);
+                processMessage(message);
 
                 successCount++;
                 log.info("Message processed successfully: messageId={}", messageId);
@@ -57,7 +57,7 @@ public class SQSTaskService {
         return new SQSBatchResponse(failures);
     }
 
-    private void processMessage(SQSEvent.SQSMessage message, Context context) throws Exception {
+    private void processMessage(SQSEvent.SQSMessage message) {
         String messageId = message.getMessageId();
         String messageBody = message.getBody();
 

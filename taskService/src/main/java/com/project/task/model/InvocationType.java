@@ -6,8 +6,7 @@ import lombok.Getter;
 public enum InvocationType {
     API_GATEWAY("API Gateway"),
     SQS("SQS"),
-    EVENT_BRIDGE_SCHEDULED("EventBridge Scheduled Event"),
-    EVENT_BRIDGE_CUSTOM("EventBridge Custom Event");
+    EVENT_BRIDGE("EventBridge");
 
     private final String displayName;
 
