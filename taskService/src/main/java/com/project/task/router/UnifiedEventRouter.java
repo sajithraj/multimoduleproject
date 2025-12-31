@@ -5,7 +5,6 @@ import com.amazonaws.services.lambda.runtime.events.*;
 import com.project.task.model.EventDetectionResult;
 import com.project.task.model.EventbridgeInvocationType;
 import com.project.task.model.InvocationType;
-import com.project.task.service.ApiGatewayTaskService;
 import com.project.task.service.ApiGatewayTaskServiceHandler;
 import com.project.task.service.EventBridgeTaskService;
 import com.project.task.service.SQSTaskService;
@@ -14,13 +13,26 @@ import com.project.task.util.InvocationTypeDetector;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import javax.inject.Inject;
+import javax.inject.Singleton;
+
+@Singleton
 public class UnifiedEventRouter {
 
     private static final Logger log = LogManager.getLogger(UnifiedEventRouter.class);
-    private static final ApiGatewayTaskService API_SERVICE = new ApiGatewayTaskService();
-    private static final SQSTaskService SQS_SERVICE = new SQSTaskService();
-    private static final EventBridgeTaskService EB_SERVICE = new EventBridgeTaskService();
-    private static final ApiGatewayTaskServiceHandler API_ROUTER = new ApiGatewayTaskServiceHandler(API_SERVICE);
+
+    private final ApiGatewayTaskServiceHandler apiRouter;
+    private final SQSTaskService sqsService;
+    private final EventBridgeTaskService ebService;
+
+    @Inject
+    public UnifiedEventRouter(ApiGatewayTaskServiceHandler apiRouter,
+                              SQSTaskService sqsService,
+                              EventBridgeTaskService ebService) {
+        this.apiRouter = apiRouter;
+        this.sqsService = sqsService;
+        this.ebService = ebService;
+    }
 
     public Object route(Object input, Context context) {
         log.info("Routing event to appropriate handler");
@@ -42,7 +54,7 @@ public class UnifiedEventRouter {
         log.info("Handling API Gateway request: method={}, path={}",
                 event.getHttpMethod(), event.getPath());
 
-        return API_ROUTER.route(event, context);
+        return apiRouter.route(event, context);
     }
 
     private SQSBatchResponse handleSqs(SQSEvent event, Context context) {
@@ -54,7 +66,7 @@ public class UnifiedEventRouter {
         int messageCount = event.getRecords().size();
         log.info("Handling SQS event with {} messages", messageCount);
 
-        return SQS_SERVICE.processSQSMessages(event, context);
+        return sqsService.processSQSMessages(event, context);
     }
 
     private String handleEventBridge(ScheduledEvent event, Context context) {
@@ -62,9 +74,9 @@ public class UnifiedEventRouter {
                 event.getSource(), event.getDetailType());
         EventbridgeInvocationType type = EventbridgeInvocationTypeDetector.detectEventBridgeType(event.getSource(), event.getDetailType());
         return switch (type) {
-            case EVENT_BRIDGE_SCHEDULED_EVENT -> EB_SERVICE.processScheduledEvent(event, context);
-            case EVENT_BRIDGE_CUSTOM_EVENT -> EB_SERVICE.processCustomEvent(event, context);
-            case EVENT_BRIDGE_S3_EVENT -> EB_SERVICE.processS3Event(event, context);
+            case EVENT_BRIDGE_SCHEDULED_EVENT -> ebService.processScheduledEvent(event, context);
+            case EVENT_BRIDGE_CUSTOM_EVENT -> ebService.processCustomEvent(event, context);
+            case EVENT_BRIDGE_S3_EVENT -> ebService.processS3Event(event, context);
         };
     }
 

@@ -7,21 +7,31 @@ import com.project.task.data.TaskData;
 import com.project.task.mapper.TaskMapper;
 import com.project.task.model.Task;
 import com.project.task.model.dto.TaskRequestDTO;
-import lombok.extern.slf4j.Slf4j;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
+import javax.inject.Inject;
+import javax.inject.Singleton;
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 
-@Slf4j
+@Singleton
 public class EventBridgeTaskService {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-    private static final TaskMapper TASK_MAPPER = TaskMapper.INSTANCE;
+    private static final Logger log = LogManager.getLogger(EventBridgeTaskService.class);
+
+    private final ObjectMapper objectMapper;
+    private final TaskMapper taskMapper;
+
+    @Inject
+    public EventBridgeTaskService(ObjectMapper objectMapper, TaskMapper taskMapper) {
+        this.objectMapper = objectMapper;
+        this.taskMapper = taskMapper;
+    }
 
     public String processScheduledEvent(ScheduledEvent event, Context context) {
         log.info("Processing scheduled EventBridge event: id={}", event.getId());
-
         try {
             String taskId = UUID.randomUUID().toString();
             String taskName = "scheduled event " + event.getId();
@@ -48,7 +58,6 @@ public class EventBridgeTaskService {
 
     public String processCustomEvent(ScheduledEvent event, Context context) {
         log.info("Processing EventBridge custom event: detailType={}, id={}", event.getDetailType(), event.getId());
-
         try {
             Map<String, Object> detail = event.getDetail();
 
@@ -59,7 +68,7 @@ public class EventBridgeTaskService {
 
             log.debug("Custom event detail: {}", detail);
 
-            TaskRequestDTO taskRequest = OBJECT_MAPPER.convertValue(detail, TaskRequestDTO.class);
+            TaskRequestDTO taskRequest = objectMapper.convertValue(detail, TaskRequestDTO.class);
 
             if (taskRequest.getName() == null || taskRequest.getName().trim().isEmpty()) {
                 String errorMsg = "Custom event detail missing required 'name' field";
@@ -67,12 +76,11 @@ public class EventBridgeTaskService {
                 throw new IllegalArgumentException(errorMsg);
             }
 
-            Task task = TASK_MAPPER.toEntity(taskRequest);
+            Task task = taskMapper.toEntity(taskRequest);
 
             TaskData.saveTask(task);
 
-            log.info("Custom event task created: id={}, name={}, detailType={} ",
-                    task.getId(), task.getName(), event.getDetailType());
+            log.info("Custom event task created: id={}, name={}, detailType={}", task.getId(), task.getName(), event.getDetailType());
 
             return "OK";
 
@@ -87,7 +95,6 @@ public class EventBridgeTaskService {
 
     public String processS3Event(ScheduledEvent event, Context context) {
         log.info("Processing S3/EventBridge event: id={}", event.getId());
-
         try {
             String taskId = UUID.randomUUID().toString();
             String taskName = "scheduled event " + event.getId();
@@ -102,7 +109,6 @@ public class EventBridgeTaskService {
                     .build();
 
             TaskData.saveTask(task);
-
             log.info("S3 event task created: id={}, name={}", taskId, taskName);
             return "OK";
 

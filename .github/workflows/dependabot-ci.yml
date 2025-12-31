@@ -1,0 +1,56 @@
+name: Dependabot CI and Auto-merge
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: ["main", "master"]
+
+permissions:
+  contents: read
+  pull-requests: write
+  actions: write
+
+jobs:
+  build:
+    if: "startsWith(github.actor, 'dependabot[bot]') || github.event.pull_request.user.login == 'dependabot[bot]'"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Cache local Maven repository
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-m2-
+
+      - name: Build (skip tests to speed up)
+        run: mvn -DskipTests clean package
+
+      - name: Run tests
+        run: mvn test
+
+  automerge:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
+    steps:
+      - name: Auto-merge Dependabot PR
+        uses: pascalgn/automerge-action@v0.15.5
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          merge_method: squash
+          # only merge when the PR is green and dependency label is present
+          skip_ci_check: false
+          required_labels: |
+            dependencies
+

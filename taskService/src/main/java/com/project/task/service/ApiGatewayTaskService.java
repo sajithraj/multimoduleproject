@@ -3,18 +3,24 @@ package com.project.task.service;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.project.task.data.TaskData;
 import com.project.task.mapper.TaskMapper;
 import com.project.task.model.Task;
 import com.project.task.model.dto.TaskRequestDTO;
-import lombok.extern.slf4j.Slf4j;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
+import javax.inject.Inject;
+import javax.inject.Singleton;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-@Slf4j
+@Singleton
 public class ApiGatewayTaskService {
+
+    private static final Logger log = LogManager.getLogger(ApiGatewayTaskService.class);
 
     // Use shared JSON util and headers to avoid per-request allocations
     private static final java.util.Map<String, String> DEFAULT_HEADERS = java.util.Collections.unmodifiableMap(new java.util.HashMap<>() {{
@@ -24,7 +30,14 @@ public class ApiGatewayTaskService {
         put("Access-Control-Allow-Headers", "Content-Type,Authorization");
     }});
 
-    private static final TaskMapper TASK_MAPPER = TaskMapper.INSTANCE;
+    private final TaskMapper taskMapper;
+    private final ObjectMapper objectMapper;
+
+    @Inject
+    public ApiGatewayTaskService(TaskMapper taskMapper, ObjectMapper objectMapper) {
+        this.taskMapper = taskMapper;
+        this.objectMapper = objectMapper;
+    }
 
     private String getRequestId(Context context) {
         return context != null ? context.getAwsRequestId() : "unknown-request-id";
@@ -35,7 +48,7 @@ public class ApiGatewayTaskService {
             APIGatewayProxyResponseEvent response = new APIGatewayProxyResponseEvent();
             response.setStatusCode(statusCode);
             response.setHeaders(DEFAULT_HEADERS);
-            response.setBody(com.project.task.util.JsonUtil.toJson(data));
+            response.setBody(objectMapper.writeValueAsString(data));
             return response;
         } catch (Exception e) {
             log.error("Error building API response: {}", e.getMessage(), e);
@@ -117,9 +130,9 @@ public class ApiGatewayTaskService {
         log.debug("Request body: {}", requestBody);
 
         try {
-            TaskRequestDTO requestDTO = com.project.task.util.JsonUtil.getMapper().readValue(requestBody, TaskRequestDTO.class);
+            TaskRequestDTO requestDTO = objectMapper.readValue(requestBody, TaskRequestDTO.class);
 
-            Task newTask = TASK_MAPPER.toEntity(requestDTO);
+            Task newTask = taskMapper.toEntity(requestDTO);
             TaskData.saveTask(newTask);
 
             log.info("Created new task with ID: {}, name: {}", newTask.getId(), newTask.getName());
@@ -160,9 +173,9 @@ public class ApiGatewayTaskService {
 
         try {
             Task existingTask = TaskData.getTaskById(id);
-            TaskRequestDTO updateDTO = com.project.task.util.JsonUtil.getMapper().readValue(requestBody, TaskRequestDTO.class);
+            TaskRequestDTO updateDTO = objectMapper.readValue(requestBody, TaskRequestDTO.class);
 
-            TASK_MAPPER.updateEntityFromDto(updateDTO, existingTask);
+            taskMapper.updateEntityFromDto(updateDTO, existingTask);
             existingTask.setUpdatedAt(System.currentTimeMillis());
 
             TaskData.saveTask(existingTask);

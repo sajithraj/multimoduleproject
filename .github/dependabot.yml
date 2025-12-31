@@ -1,0 +1,39 @@
+version: 2
+updates:
+  - package-ecosystem: "maven"
+    directory: "/" # root pom
+    schedule:
+      interval: "daily"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps"
+    reviewers: []
+    labels:
+      - "dependencies"
+  - package-ecosystem: "maven"
+    directory: "/taskService"
+    schedule:
+      interval: "daily"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps"
+    labels:
+      - "dependencies"
+  - package-ecosystem: "maven"
+    directory: "/service"
+    schedule:
+      interval: "daily"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps"
+    labels:
+      - "dependencies"
+  - package-ecosystem: "maven"
+    directory: "/token"
+    schedule:
+      interval: "daily"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps"
+    labels:
+      - "dependencies"

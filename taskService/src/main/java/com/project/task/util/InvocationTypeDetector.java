@@ -66,7 +66,7 @@ public final class InvocationTypeDetector {
                 log.error("SQS event Records list is empty");
                 throw new IllegalArgumentException("Invalid SQS Event: Records list is empty");
             }
-            Object firstRecord = ((java.util.List<?>) records).getFirst();
+            Object firstRecord = ((java.util.List<?>) records).get(0);
             if (firstRecord instanceof Map<?, ?> recordMap) {
 
                 // SQS has eventSource = "aws:sqs"

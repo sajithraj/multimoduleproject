@@ -12,7 +12,6 @@
     <name>SetUpProject - Service Module</name>
     <description>External API Service - Handles API calls and Lambda handler</description>
 
-    <!-- Copied shared properties from root parent POM -->
     <properties>
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
@@ -36,134 +35,6 @@
         <netty.version>4.1.115.Final</netty.version>
     </properties>
 
-    <!-- Copied dependencyManagement from root so dependencies can omit versions -->
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>software.amazon.awssdk</groupId>
-                <artifactId>bom</artifactId>
-                <version>${aws.sdk.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-
-            <dependency>
-                <groupId>com.fasterxml.jackson</groupId>
-                <artifactId>jackson-bom</artifactId>
-                <version>${jackson.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-
-            <dependency>
-                <groupId>io.netty</groupId>
-                <artifactId>netty-bom</artifactId>
-                <version>${netty.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-
-            <dependency>
-                <groupId>software.amazon.awssdk</groupId>
-                <artifactId>secretsmanager</artifactId>
-                <version>${aws.sdk.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>com.amazonaws</groupId>
-                <artifactId>aws-lambda-java-core</artifactId>
-                <version>${aws.lambda.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>com.amazonaws</groupId>
-                <artifactId>aws-lambda-java-events</artifactId>
-                <version>${aws.lambda.events.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>software.amazon.lambda</groupId>
-                <artifactId>powertools-logging</artifactId>
-                <version>${powertools.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>software.amazon.lambda</groupId>
-                <artifactId>powertools-parameters</artifactId>
-                <version>${powertools.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>software.amazon.lambda</groupId>
-                <artifactId>powertools-parameters-ssm</artifactId>
-                <version>${powertools.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>software.amazon.lambda</groupId>
-                <artifactId>powertools-parameters-secrets</artifactId>
-                <version>${powertools.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>org.apache.httpcomponents.client5</groupId>
-                <artifactId>httpclient5</artifactId>
-                <version>${httpclient.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>com.fasterxml.jackson.core</groupId>
-                <artifactId>jackson-databind</artifactId>
-                <version>${jackson.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>com.fasterxml.jackson.datatype</groupId>
-                <artifactId>jackson-datatype-jsr310</artifactId>
-                <version>${jackson.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>jakarta.validation</groupId>
-                <artifactId>jakarta.validation-api</artifactId>
-                <version>3.0.2</version>
-            </dependency>
-
-            <dependency>
-                <groupId>org.apache.logging.log4j</groupId>
-                <artifactId>log4j-core</artifactId>
-                <version>${log4j.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>org.apache.logging.log4j</groupId>
-                <artifactId>log4j-api</artifactId>
-                <version>${log4j.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>junit</groupId>
-                <artifactId>junit</artifactId>
-                <version>${junit.version}</version>
-                <scope>test</scope>
-            </dependency>
-
-            <dependency>
-                <groupId>org.mockito</groupId>
-                <artifactId>mockito-core</artifactId>
-                <version>${mockito.version}</version>
-                <scope>test</scope>
-            </dependency>
-
-            <dependency>
-                <groupId>org.projectlombok</groupId>
-                <artifactId>lombok</artifactId>
-                <version>${lombok.version}</version>
-                <scope>provided</scope>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
-
     <dependencies>
         <!-- Token Module (keep same groupId/artifactId but add version is not needed because dependencyManagement is present) -->
         <dependency>
@@ -176,29 +47,34 @@
         <dependency>
             <groupId>com.amazonaws</groupId>
             <artifactId>aws-lambda-java-core</artifactId>
+            <version>${aws.lambda.version}</version>
         </dependency>
 
         <dependency>
             <groupId>com.amazonaws</groupId>
             <artifactId>aws-lambda-java-events</artifactId>
+            <version>${aws.lambda.events.version}</version>
         </dependency>
 
         <!-- Powertools v2 -->
         <dependency>
             <groupId>software.amazon.lambda</groupId>
             <artifactId>powertools-logging</artifactId>
+            <version>${powertools.version}</version>
         </dependency>
 
         <!-- HTTP Client -->
         <dependency>
             <groupId>org.apache.httpcomponents.client5</groupId>
             <artifactId>httpclient5</artifactId>
+            <version>${httpclient.version}</version>
         </dependency>
 
         <!-- Log4j2 -->
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-core</artifactId>
+            <version>${log4j.version}</version>
         </dependency>
 
         <dependency>
@@ -211,6 +87,7 @@
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
+            <version>${junit.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

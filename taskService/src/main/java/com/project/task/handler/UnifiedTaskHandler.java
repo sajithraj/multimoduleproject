@@ -2,6 +2,8 @@ package com.project.task.handler;
 
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
+import com.project.task.di.DaggerLambdaComponent;
+import com.project.task.di.LambdaComponent;
 import com.project.task.router.UnifiedEventRouter;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -13,7 +15,17 @@ import java.util.UUID;
 public class UnifiedTaskHandler implements RequestHandler<Object, Object> {
 
     private static final Logger log = LogManager.getLogger(UnifiedTaskHandler.class);
-    private static final UnifiedEventRouter ROUTER = new UnifiedEventRouter();
+    private final UnifiedEventRouter router;
+
+    // Production constructor: create component inline (cold-start); delegates to testable constructor
+    public UnifiedTaskHandler() {
+        this(DaggerLambdaComponent.create());
+    }
+
+    // Testable constructor - allows injecting a test LambdaComponent
+    public UnifiedTaskHandler(LambdaComponent component) {
+        this.router = component.unifiedEventRouter();
+    }
 
     @Override
     @Logging(logEvent = true)
@@ -37,7 +49,7 @@ public class UnifiedTaskHandler implements RequestHandler<Object, Object> {
             }
 
             // Route to appropriate handler
-            Object response = ROUTER.route(input, context);
+            Object response = router.route(input, context);
 
             log.info("Lambda execution completed successfully");
             return response;

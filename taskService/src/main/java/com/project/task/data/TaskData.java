@@ -1,15 +1,17 @@
 package com.project.task.data;
 
 import com.project.task.model.Task;
-import lombok.extern.slf4j.Slf4j;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-@Slf4j
 public class TaskData {
+
+    private static final Logger log = LogManager.getLogger(TaskData.class);
 
     private static final Map<String, Task> TASK_STORE = new ConcurrentHashMap<>();
 

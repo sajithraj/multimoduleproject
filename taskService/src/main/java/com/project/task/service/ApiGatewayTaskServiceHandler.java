@@ -6,6 +6,7 @@ import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import javax.inject.Inject;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -21,6 +22,7 @@ public class ApiGatewayTaskServiceHandler {
         put("Access-Control-Allow-Headers", "Content-Type,Authorization");
     }});
 
+    @Inject
     public ApiGatewayTaskServiceHandler(ApiGatewayTaskService taskService) {
         this.taskService = taskService;
     }
